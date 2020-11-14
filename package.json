@@ -1,0 +1,22 @@
+{
+  "name": "auditme-be",
+  "version": "1.0.0",
+  "description": "Audit report submission and review (backend)",
+  "main": "server.js",
+  "scripts": {
+    "start": "nodemon server.js"
+  },
+  "author": "iammar7",
+  "license": "ISC",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^8.2.0",
+    "express": "^4.17.1",
+    "formidable": "^1.2.2",
+    "jsonwebtoken": "^8.5.1",
+    "mongoose": "^5.10.14",
+    "passport": "^0.4.1",
+    "passport-jwt": "^4.0.0"
+  }
+}
