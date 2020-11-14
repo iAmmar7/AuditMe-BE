@@ -10,6 +10,12 @@ const app = express();
 // Configure Environment variables
 dotenv.config();
 
+// Load Routes
+const auth = require('./routes/auth');
+
+// Load Middlewares
+const { userAuth, userRole } = require('./middlewares');
+
 // Middlewares
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
@@ -24,6 +30,9 @@ require('./db/mongoose');
 
 // Passport Config
 require('./config/passport')(passport);
+
+// Use Routes
+app.use('/api/auth', auth);
 
 const port = process.env.PORT || 5000;
 
