@@ -11,7 +11,9 @@ const app = express();
 dotenv.config();
 
 // Load Routes
-const auth = require('./routes/auth');
+const authRoutes = require('./routes/auth');
+const adminRoutes = require('./routes/admin');
+const userRoutes = require('./routes/user');
 
 // Load Middlewares
 const { userAuth, userRole } = require('./middlewares');
@@ -32,7 +34,9 @@ require('./db/mongoose');
 require('./config/passport')(passport);
 
 // Use Routes
-app.use('/api/auth', auth);
+app.use('/api/auth', authRoutes);
+app.use('/api/admin', userAuth, userRole(['admin']), adminRoutes);
+app.use('/api/user', userAuth, userRole(['user']), userRoutes);
 
 const port = process.env.PORT || 5000;
 
