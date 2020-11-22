@@ -1,4 +1,6 @@
+const fs = require('fs');
 const express = require('express');
+const formidable = require('formidable');
 const router = express.Router();
 
 // Load Models
@@ -18,17 +20,74 @@ router.post('/audit-report', async (req, res) => {
   }
 });
 
-// @route   GET /api/user/priorities-report
-// @desc    Submit priorities report
+// @route   GET /api/user/issue-report
+// @desc    Submit priorities/iisue report
 // @access  Private
-router.post('/priorities-report', async (req, res) => {
-  try {
-    const newReport = await PrioritiesReport.create(req.body);
+router.post('/issue-report', async (req, res) => {
+  const formData = formidable({
+    uploadDir: './public/issues',
+    keepExtensions: true,
+    multiples: true,
+  });
 
-    res.status(200).json({ success: true, report: newReport });
-  } catch (error) {
-    return res.status(400).json({ success: false, message: 'Some fields are missing', error });
-  }
+  formData.parse(req, async (error, fields, files) => {
+    const { evidencesBefore, evidencesAfter } = files;
+    try {
+      if (error) throw 'Unable to upload image!';
+
+      let arrayOfEvidencesBeforeFiles = [],
+        arrayOfEvidencesAfterFiles = [];
+
+      if (evidencesBefore) {
+        Object.keys(evidencesBefore).forEach((value) => {
+          if (evidencesBefore[value] && evidencesBefore[value].path) {
+            const path = evidencesBefore[value].path.split('public')[1];
+            arrayOfEvidencesBeforeFiles.push(path);
+          }
+          if (value === 'path') {
+            const path = evidencesBefore[value].split('public')[1];
+            arrayOfEvidencesBeforeFiles.filter((item) => {
+              if (item !== path) arrayOfEvidencesBeforeFiles.push(path);
+            });
+          }
+        });
+      }
+
+      if (evidencesAfter) {
+        Object.keys(evidencesAfter).forEach((value) => {
+          if (evidencesAfter[value] && evidencesAfter[value].path) {
+            const path = evidencesAfter[value].path.split('public')[1];
+            arrayOfEvidencesAfterFiles.push(path);
+          }
+          if (value === 'path') {
+            const path = evidencesAfter[value].split('public')[1];
+            arrayOfEvidencesAfterFiles.filter((item) => {
+              if (item !== path) arrayOfEvidencesAfterFiles.push(path);
+            });
+          }
+        });
+      }
+
+      console.log(arrayOfEvidencesBeforeFiles);
+      console.log(arrayOfEvidencesAfterFiles);
+
+      const report = await PrioritiesReport.create({
+        ...fields,
+        evidencesBefore: arrayOfEvidencesBeforeFiles,
+        evidencesAfter: arrayOfEvidencesAfterFiles,
+      });
+
+      return res.status(200).json({ success: true, report });
+    } catch (error) {
+      if (evidencesBefore) fs.unlinkSync(evidencesBefore.path);
+      if (evidencesAfter) fs.unlinkSync(evidencesAfter.path);
+      if (error && error.name === 'ValidationError') {
+        return res.status(400).json({ success: false, message: 'Input fields validation error' });
+      }
+
+      return res.status(400).json({ success: false, message: error });
+    }
+  });
 });
 
 module.exports = router;

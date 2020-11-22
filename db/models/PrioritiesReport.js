@@ -50,9 +50,9 @@ const PrioritesReportSchema = new Schema(
     },
     status: {
       type: String,
-      required: true,
+      default: 'Pending',
     },
-    feedbackFromSalesOperation: {
+    feedback: {
       type: String,
       default: null,
     },
@@ -69,3 +69,5 @@ const PrioritesReportSchema = new Schema(
     timestamps: true,
   },
 );
+
+module.exports = PrioritesReport = mongoose.model('prioritiesReport', PrioritesReportSchema);
