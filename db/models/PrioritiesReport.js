@@ -70,6 +70,16 @@ const PrioritesReportSchema = new Schema(
       type: Date,
       default: null,
     },
+    updatedBy: [
+      {
+        name: String,
+        id: {
+          type: mongoose.SchemaTypes.ObjectId,
+          ref: 'user',
+        },
+        time: Date,
+      },
+    ],
   },
   {
     timestamps: true,
