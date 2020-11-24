@@ -3,6 +3,11 @@ const Schema = mongoose.Schema;
 
 const PrioritesReportSchema = new Schema(
   {
+    user: {
+      type: mongoose.SchemaTypes.ObjectId,
+      ref: 'user',
+      required: true,
+    },
     week: {
       type: Number,
     },
@@ -51,6 +56,7 @@ const PrioritesReportSchema = new Schema(
     status: {
       type: String,
       default: 'Pending',
+      enum: ['Pending', 'Resolved'],
     },
     feedback: {
       type: String,

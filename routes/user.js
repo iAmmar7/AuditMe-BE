@@ -1,5 +1,6 @@
 const fs = require('fs');
 const express = require('express');
+const moment = require('moment');
 const formidable = require('formidable');
 const router = express.Router();
 
@@ -20,10 +21,10 @@ router.post('/audit-report', async (req, res) => {
   }
 });
 
-// @route   GET /api/user/issue-report
-// @desc    Submit priorities/iisue report
+// @route   POST /api/user/priorities-report
+// @desc    Submit priorities/issue report
 // @access  Private
-router.post('/issue-report', async (req, res) => {
+router.post('/priorities-report', async (req, res) => {
   const formData = formidable({
     uploadDir: './public/issues',
     keepExtensions: true,
@@ -73,6 +74,7 @@ router.post('/issue-report', async (req, res) => {
 
       const report = await PrioritiesReport.create({
         ...fields,
+        user: req.user.id,
         evidencesBefore: arrayOfEvidencesBeforeFiles,
         evidencesAfter: arrayOfEvidencesAfterFiles,
       });
@@ -88,6 +90,165 @@ router.post('/issue-report', async (req, res) => {
       return res.status(400).json({ success: false, message: error });
     }
   });
+});
+
+// @route   GET /api/user/priorities-reports
+// @desc    Get all priorities reports
+// @access  Private
+router.post('/priorities-reports', async (req, res) => {
+  const { params, sorter, filter } = req.body;
+  let {
+    current,
+    pageSize,
+    date,
+    user,
+    status,
+    type,
+    issueDetails,
+    dateIdentified,
+    actionTaken,
+  } = params;
+  let { dateSorter, dateIdentifiedSorter } = sorter;
+  let { statusFilter } = filter;
+
+  console.log(req.body);
+
+  current = current ? current : 1;
+  pageSize = pageSize ? pageSize : 10;
+
+  const offset = +pageSize * (+current - 1);
+
+  // Add query params if exist in request
+  const matchQuery = [];
+  if (date)
+    matchQuery.push({
+      date: {
+        $gte: moment(new Date(date)).utcOffset(0).startOf('day').toDate(),
+        $lte: moment(new Date(date)).utcOffset(0).endOf('day').toDate(),
+      },
+    });
+  if (user) matchQuery.push({ 'user.name': { $regex: user, $options: 'i' } });
+  if (status) matchQuery.push({ status: { $regex: status, $options: 'i' } });
+  if (type) matchQuery.push({ type: { $regex: type, $options: 'i' } });
+  if (issueDetails) matchQuery.push({ issueDetails: { $regex: issueDetails, $options: 'i' } });
+  if (dateIdentified)
+    matchQuery.push({
+      dateIdentified: {
+        $gte: moment(new Date(dateIdentified)).utcOffset(0).startOf('day').toDate(),
+        $lte: moment(new Date(dateIdentified)).utcOffset(0).endOf('day').toDate(),
+      },
+    });
+  if (actionTaken) matchQuery.push({ actionTaken: { $regex: actionTaken, $options: 'i' } });
+
+  // Add sorter if exist in request
+  let sortBy = { createdAt: -1 };
+  if (dateSorter === 'ascend') sortBy = { date: +1 };
+  if (dateSorter === 'descend') sortBy = { date: -1 };
+  if (dateIdentifiedSorter === 'ascend') sortBy = { dateIdentified: +1 };
+  if (dateIdentifiedSorter === 'descend') sortBy = { dateIdentified: -1 };
+
+  // Add filter if exist in request
+  if (statusFilter) {
+    matchQuery.push({ status: { $in: statusFilter } });
+  }
+
+  // Get reports
+  const reports = await PrioritiesReport.aggregate([
+    {
+      $match:
+        matchQuery.length > 0
+          ? {
+              $and: matchQuery,
+            }
+          : {},
+    },
+    {
+      $lookup: {
+        from: User.collection.name,
+        localField: 'user',
+        foreignField: '_id',
+        as: 'user',
+      },
+    },
+    { $unwind: '$user' },
+    { $sort: sortBy },
+    { $limit: +pageSize + offset },
+    { $skip: offset },
+    {
+      $project: {
+        _id: '$_id',
+        date: '$date',
+        user: '$user.name',
+        type: '$type',
+        status: '$status',
+        region: '$region',
+        areaManager: '$areaManager',
+        regionalManager: '$regionalManager',
+        processSpecialist: '$processSpecialist',
+        issueDetails: '$issueDetails',
+        stationNumber: '$stationNumber',
+        evidencesBefore: '$evidencesBefore',
+        evidencesAfter: '$evidencesAfter',
+        feedback: '$feedback',
+        daysOpen: '$daysOpen',
+        dateOfClosure: '$dateOfClosure',
+        dateIdentified: '$dateIdentified',
+        actionTaken: '$actionTaken',
+        createdAt: '$createdAt',
+        updatedAt: '$updatedAt',
+      },
+    },
+  ]);
+
+  if (!reports) return res.status(400).json({ success: false, message: 'No report found' });
+
+  // Get reports count
+  const reportsCount = await PrioritiesReport.aggregate([
+    {
+      $lookup: {
+        from: User.collection.name,
+        localField: 'user',
+        foreignField: '_id',
+        as: 'user',
+      },
+    },
+    { $unwind: '$user' },
+    {
+      $match:
+        matchQuery.length > 0
+          ? {
+              $and: matchQuery,
+            }
+          : {},
+    },
+    {
+      $group: {
+        _id: 0,
+        count: { $sum: 1 },
+      },
+    },
+    {
+      $project: {
+        _id: 0,
+        count: '$count',
+      },
+    },
+  ]);
+
+  if (!reportsCount)
+    return res.status(400).json({ success: false, message: 'Unable to calculate report count' });
+
+  return res.status(200).json({
+    success: true,
+    reports,
+    totalReports: reportsCount.length < 1 ? 0 : reportsCount[0].count,
+  });
+});
+
+router.post('/add-user', async (req, res) => {
+  const reports = await PrioritiesReport.updateMany({}, { user: '5fb0088bbf9fac391822ea2c' });
+
+  return res.json(reports);
 });
 
 module.exports = router;
