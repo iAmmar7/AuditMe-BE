@@ -174,7 +174,7 @@ router.post('/priority-report/:id', async (req, res) => {
 
       if (!updateReport) throw 'Unable to update the report';
 
-      return res.status(200).json({ success: true, report });
+      return res.status(200).json({ success: true, report: updateReport });
     } catch (error) {
       if (evidencesBefore) fs.unlinkSync(evidencesBefore.path);
       if (evidencesAfter) fs.unlinkSync(evidencesAfter.path);
@@ -251,14 +251,6 @@ router.post('/priorities-reports', async (req, res) => {
     // Get reports
     const reports = await PrioritiesReport.aggregate([
       {
-        $match:
-          matchQuery.length > 0
-            ? {
-                $and: matchQuery,
-              }
-            : {},
-      },
-      {
         $lookup: {
           from: User.collection.name,
           localField: 'user',
@@ -267,6 +259,14 @@ router.post('/priorities-reports', async (req, res) => {
         },
       },
       { $unwind: '$user' },
+      {
+        $match:
+          matchQuery.length > 0
+            ? {
+                $and: matchQuery,
+              }
+            : {},
+      },
       { $sort: sortBy },
       { $limit: +pageSize + offset },
       { $skip: offset },
@@ -290,6 +290,7 @@ router.post('/priorities-reports', async (req, res) => {
           dateOfClosure: '$dateOfClosure',
           dateIdentified: '$dateIdentified',
           actionTaken: '$actionTaken',
+          updatedBy: '$updatedBy',
           createdAt: '$createdAt',
           updatedAt: '$updatedAt',
         },
@@ -330,6 +331,8 @@ router.post('/priorities-reports', async (req, res) => {
         },
       },
     ]);
+
+    console.log(reports, reportsCount);
 
     if (!reportsCount)
       return res.status(400).json({ success: false, message: 'Unable to calculate report count' });

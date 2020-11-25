@@ -63,7 +63,7 @@ const PrioritesReportSchema = new Schema(
       default: null,
     },
     daysOpen: {
-      type: Date,
+      type: Number,
       default: null,
     },
     dateOfClosure: {
