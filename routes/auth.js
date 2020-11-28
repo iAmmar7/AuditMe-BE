@@ -8,6 +8,11 @@ const passport = require('passport');
 const Admin = require('../db/models/Admin');
 const User = require('../db/models/User');
 
+// @route   GET /api/auth/Test
+// @desc    Test route
+// @access  Public
+router.get('/test', async (req, res) => res.status(200).json({ message: 'Tesr route working' }));
+
 // @route   GET /api/auth/admin/signup
 // @desc    Admin Signup
 // @access  Public
