@@ -332,8 +332,6 @@ router.post('/priorities-reports', async (req, res) => {
       },
     ]);
 
-    console.log(reports, reportsCount);
-
     if (!reportsCount)
       return res.status(400).json({ success: false, message: 'Unable to calculate report count' });
 

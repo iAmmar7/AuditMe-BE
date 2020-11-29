@@ -27,6 +27,13 @@ app.use(passport.initialize());
 // Serve images
 app.use(express.static(path.join(__dirname, '/public')));
 
+// Serve Frontend
+app.use(express.static(path.join(__dirname, '/dist')));
+
+app.get('/*', function (req, res) {
+  res.sendFile(path.join(__dirname, '/dist/', 'index.html'));
+});
+
 // Connect to MongoDB
 require('./db/mongoose');
 
