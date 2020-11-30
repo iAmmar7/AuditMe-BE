@@ -47,7 +47,7 @@ require('./config/passport')(passport);
 app.use('/api/auth', authRoutes);
 app.use('/api/auditor', userAuth, userRole(['auditor']), auditorRoutes);
 // app.use('/api/admin', userAuth, userRole(['admin']), adminRoutes);
-// app.use('/api/user', userAuth, userRole(['auditor', 'rm']), userRoutes);
+app.use('/api/user', userAuth, userRole(['auditor', 'rm']), userRoutes);
 // app.use('/api/rm', userAuth, userRole(['rm']), userRoutes);
 
 const port = process.env.PORT || 5000;
