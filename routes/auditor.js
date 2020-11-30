@@ -161,4 +161,25 @@ router.post('/priority-report/:id', async (req, res) => {
   });
 });
 
+// @route   GET /api/auditor/cancel-issue/:id
+// @desc    Cancel issue report
+// @access  Private
+router.get('/cancel-issue/:id', async (req, res) => {
+  try {
+    const updateReport = await PrioritiesReport.findOneAndUpdate(
+      {
+        _id: req.params.id,
+      },
+      { status: 'Cancelled' },
+      { new: true },
+    );
+
+    if (!updateReport) throw 'Failed to cancelled the issue';
+
+    return res.status(200).json({ success: true, message: 'Successfully cancelled the issue' });
+  } catch (error) {
+    return res.status(400).json({ success: false, message: 'Unable to cancel the issue' });
+  }
+});
+
 module.exports = router;
