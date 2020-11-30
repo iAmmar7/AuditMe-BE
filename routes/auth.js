@@ -11,7 +11,7 @@ const User = require('../db/models/User');
 // @route   GET /api/auth/Test
 // @desc    Test route
 // @access  Public
-router.get('/test', async (req, res) => res.status(200).json({ message: 'Tesr route working' }));
+router.get('/test', async (req, res) => res.status(200).json({ message: 'Test route working' }));
 
 // @route   GET /api/auth/admin/signup
 // @desc    Admin Signup
@@ -88,7 +88,7 @@ router.post('/admin/login', async (req, res) => {
 // @desc    user Signup
 // @access  Public
 router.post('/user/signup', async (req, res) => {
-  const { name, email, password } = req.body;
+  const { name, email, password, role } = req.body;
 
   const admin = await Admin.findOne({ email });
 
@@ -104,7 +104,7 @@ router.post('/user/signup', async (req, res) => {
   if (user) {
     return res.status(400).json({ success: false, message: 'Email already exist' });
   } else {
-    const newUser = new User({ name, email, password });
+    const newUser = new User({ name, email, password, role });
 
     bcrypt.genSalt(10, (err, salt) => {
       bcrypt.hash(newUser.password, salt, (err, hash) => {

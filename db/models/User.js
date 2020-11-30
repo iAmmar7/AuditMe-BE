@@ -17,7 +17,8 @@ const UserSchema = new Schema(
     },
     role: {
       type: String,
-      default: 'user',
+      required: true,
+      enum: ['auditor', 'rm'],
     },
     profile_picture: {
       type: String,

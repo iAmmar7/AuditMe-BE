@@ -8,40 +8,61 @@ const PrioritesReportSchema = new Schema(
       ref: 'user',
       required: true,
     },
-    week: {
-      type: Number,
-    },
     date: {
       type: Date,
       required: true,
     },
+    week: {
+      type: Number,
+      required: true,
+    },
     region: {
       type: String,
-      default: null,
+      required: true,
+      enum: [
+        'WR-North',
+        'WR-South',
+        'CR-East',
+        'CR-South',
+        'CR-North',
+        'Southern',
+        'ER-North',
+        'ER-South',
+      ],
     },
     areaManager: {
       type: String,
-      default: null,
+      required: true,
     },
     regionalManager: {
       type: String,
-      default: null,
+      required: true,
     },
     processSpecialist: {
       type: String,
-      default: null,
+      required: true,
     },
     type: {
       type: String,
       required: true,
+      enum: [
+        'Customer Experience',
+        'Bay Violation',
+        'Housekeeping',
+        'Customer Mistreatment',
+        'Initiative',
+        'Admin Issues',
+        'Safety',
+        'Others',
+      ],
     },
     issueDetails: {
       type: String,
-      default: null,
+      required: true,
     },
     stationNumber: {
       type: String,
-      default: null,
+      required: true,
     },
     dateIdentified: {
       type: Date,
@@ -51,19 +72,15 @@ const PrioritesReportSchema = new Schema(
     evidencesAfter: [{ type: String }],
     actionTaken: {
       type: String,
-      required: true,
+      default: null,
     },
     status: {
       type: String,
       default: 'Pending',
-      enum: ['Pending', 'Resolved'],
+      enum: ['Pending', 'Resolved', 'Cancelled'],
     },
     feedback: {
       type: String,
-      default: null,
-    },
-    daysOpen: {
-      type: Number,
       default: null,
     },
     dateOfClosure: {
