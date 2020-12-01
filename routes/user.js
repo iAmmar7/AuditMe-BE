@@ -425,9 +425,9 @@ router.get('/report-chart', async (req, res) => {
     resolvedExist = false,
     cancelledExist = false;
   for (let i = 0; i < 3; i++) {
-    if (reportStats[i]?.status === 'Pending') pendingExist = true;
-    if (reportStats[i]?.status === 'Resolved') resolvedExist = true;
-    if (reportStats[i]?.status === 'Cancelled') cancelledExist = true;
+    if (reportStats[i] && reportStats[i].status === 'Pending') pendingExist = true;
+    if (reportStats[i] && reportStats[i].status === 'Resolved') resolvedExist = true;
+    if (reportStats[i] && reportStats[i].status === 'Cancelled') cancelledExist = true;
   }
 
   !resolvedExist ? reportStats.push({ status: 'Resolved', count: 0 }) : null;
