@@ -398,11 +398,11 @@ router.post('/priorities-reports', async (req, res) => {
   }
 });
 
-// @route   GET /api/user/report-chart?filter
-// @desc    Get region vise report data
+// @route   POST /api/user/report-chart
+// @desc    POST region vise report data
 // @access  Private
-router.get('/report-chart', async (req, res) => {
-  const filter = req.query.filter ? req.query.filter : 'overall';
+router.post('/report-chart', async (req, res) => {
+  const filter = req.body.filter ? req.body.filter : 'overall';
 
   try {
     const reportStats = await PrioritiesReport.aggregate([
