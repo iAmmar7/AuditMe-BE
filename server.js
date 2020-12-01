@@ -15,6 +15,7 @@ const authRoutes = require('./routes/auth');
 const adminRoutes = require('./routes/admin');
 const userRoutes = require('./routes/user');
 const auditorRoutes = require('./routes/auditor');
+const rmRoutes = require('./routes/rm');
 
 // Load Middlewares
 const { userAuth, userRole } = require('./middlewares');
@@ -45,10 +46,10 @@ require('./config/passport')(passport);
 
 // Use Routes
 app.use('/api/auth', authRoutes);
-app.use('/api/auditor', userAuth, userRole(['auditor']), auditorRoutes);
-// app.use('/api/admin', userAuth, userRole(['admin']), adminRoutes);
 app.use('/api/user', userAuth, userRole(['auditor', 'rm']), userRoutes);
-// app.use('/api/rm', userAuth, userRole(['rm']), userRoutes);
+app.use('/api/auditor', userAuth, userRole(['auditor']), auditorRoutes);
+app.use('/api/rm', userAuth, userRole(['rm']), rmRoutes);
+// app.use('/api/admin', userAuth, userRole(['admin']), adminRoutes);
 
 const port = process.env.PORT || 5000;
 

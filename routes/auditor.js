@@ -166,20 +166,104 @@ router.post('/priority-report/:id', async (req, res) => {
 // @access  Private
 router.get('/cancel-issue/:id', async (req, res) => {
   try {
+    const report = await PrioritiesReport.findOne({ _id: req.params.id });
+
+    if (!report) throw 'Report not found';
+
     const updateReport = await PrioritiesReport.findOneAndUpdate(
       {
         _id: req.params.id,
       },
-      { status: 'Cancelled' },
+      { status: report.status === 'Cancelled' ? 'Pending' : 'Cancelled' },
       { new: true },
     );
 
-    if (!updateReport) throw 'Failed to cancelled the issue';
+    if (!updateReport) throw 'Failed to cancel the issue';
 
     return res.status(200).json({ success: true, message: 'Successfully cancelled the issue' });
   } catch (error) {
-    return res.status(400).json({ success: false, message: 'Unable to cancel the issue' });
+    return res.status(400).json({ success: false, message: 'Unable to update the issue' });
   }
+});
+
+// @route   POST /api/auditor/update-issue/:id
+// @desc    Update issue report
+// @access  Private
+router.post('/update-issue/:id', async (req, res) => {
+  const formData = formidable({
+    uploadDir: './public/issues',
+    keepExtensions: true,
+    multiples: true,
+  });
+
+  console.log(req.params.id);
+
+  if (!req.params.id) return;
+
+  const report = await PrioritiesReport.findOne({ _id: req.params.id });
+
+  if (!report) return res.status(400).json({ success: false, message: 'Unable to update report' });
+
+  if (report.user.toString() !== req.user.id.toString())
+    return res
+      .status(400)
+      .json({ success: false, message: 'You are not authorized to update this issue' });
+
+  formData.parse(req, async (error, fields, files) => {
+    const { evidencesBefore } = files;
+    try {
+      if (error) throw 'Unable to upload image!';
+
+      let arrayOfEvidencesBeforeFiles = [];
+
+      if (evidencesBefore) {
+        Object.keys(evidencesBefore).forEach((value) => {
+          if (evidencesBefore[value] && evidencesBefore[value].path) {
+            const path = evidencesBefore[value].path.split('public')[1];
+            arrayOfEvidencesBeforeFiles.push(path);
+          }
+          if (value === 'path') {
+            const path = evidencesBefore[value].split('public')[1];
+            arrayOfEvidencesBeforeFiles.filter((item) => {
+              if (item !== path) arrayOfEvidencesBeforeFiles.push(path);
+            });
+          }
+        });
+      }
+
+      console.log(arrayOfEvidencesBeforeFiles);
+
+      let updatedEvidencesBefore = [...report.evidencesBefore, ...arrayOfEvidencesBeforeFiles];
+
+      // Update db
+      const updateReport = await PrioritiesReport.findOneAndUpdate(
+        { _id: req.params.id },
+        {
+          ...fields,
+          evidencesBefore: updatedEvidencesBefore,
+          $push: {
+            updatedBy: {
+              name: req.user.name,
+              id: req.user.id,
+              time: new Date(),
+            },
+          },
+        },
+        { new: true },
+      );
+
+      if (!updateReport) throw 'Unable to update the report';
+
+      return res.status(200).json({ success: true, report: updateReport });
+    } catch (error) {
+      if (evidencesBefore) fs.unlinkSync(evidencesBefore.path);
+      if (error && error.name === 'ValidationError') {
+        return res.status(400).json({ success: false, message: 'Input fields validation error' });
+      }
+
+      return res.status(400).json({ success: false, message: error });
+    }
+  });
 });
 
 module.exports = router;

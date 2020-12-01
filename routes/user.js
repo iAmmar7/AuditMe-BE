@@ -290,7 +290,10 @@ router.post('/priorities-reports', async (req, res) => {
           _id: '$_id',
           daysOpen: {
             $trunc: {
-              $divide: [{ $subtract: [new Date(), '$dateIdentified'] }, 1000 * 60 * 60 * 24],
+              $divide: [
+                { $subtract: [{ $ifNull: ['$dateOfClosure', new Date()] }, '$dateIdentified'] },
+                1000 * 60 * 60 * 24,
+              ],
             },
           },
           root: '$$ROOT',
@@ -300,12 +303,29 @@ router.post('/priorities-reports', async (req, res) => {
       { $limit: +pageSize + offset },
       { $skip: offset },
       {
+        $lookup: {
+          from: User.collection.name,
+          localField: 'root.resolvedBy',
+          foreignField: '_id',
+          as: 'resolvedBy',
+        },
+      },
+      {
+        $unwind: {
+          path: '$resolvedBy',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
         $project: {
           _id: '$_id',
           daysOpen: '$daysOpen',
           date: '$root.date',
+          week: '$root.week',
           userName: '$root.user.name',
           userId: '$root.user._id',
+          resolvedByName: { $ifNull: ['$resolvedBy.name', null] },
+          resolvedById: { $ifNull: ['$resolvedBy._id', null] },
           type: '$root.type',
           status: '$root.status',
           region: '$root.region',
@@ -376,6 +396,65 @@ router.post('/priorities-reports', async (req, res) => {
       message: 'Unable to fetch reports, reload',
     });
   }
+});
+
+// @route   GET /api/user/report-chart?filter
+// @desc    Get region vise report data
+// @access  Private
+router.get('/report-chart', async (req, res) => {
+  const filter = req.query.filter ? req.query.filter : 'overall';
+
+  const reportStats = await PrioritiesReport.aggregate([
+    { $match: filter === 'overall' ? {} : { region: filter } },
+    {
+      $group: {
+        _id: '$status',
+        count: { $sum: 1 },
+      },
+    },
+    {
+      $project: {
+        _id: 0,
+        status: '$_id',
+        count: { $ifNull: ['$count', 0] },
+      },
+    },
+  ]);
+
+  let pendingExist = false,
+    resolvedExist = false,
+    cancelledExist = false;
+  for (let i = 0; i < 3; i++) {
+    if (reportStats[i]?.status === 'Pending') pendingExist = true;
+    if (reportStats[i]?.status === 'Resolved') resolvedExist = true;
+    if (reportStats[i]?.status === 'Cancelled') cancelledExist = true;
+  }
+
+  !resolvedExist ? reportStats.push({ status: 'Resolved', count: 0 }) : null;
+  !pendingExist ? reportStats.push({ status: 'Pending', count: 0 }) : null;
+  !cancelledExist ? reportStats.push({ status: 'Cancelled', count: 0 }) : null;
+
+  const reportCount = await PrioritiesReport.aggregate([
+    { $match: filter === 'overall' ? {} : { region: filter } },
+    {
+      $group: {
+        _id: 0,
+        count: { $sum: 1 },
+      },
+    },
+    {
+      $project: {
+        _id: 0,
+        count: { $ifNull: ['$count', 0] },
+      },
+    },
+  ]);
+
+  return res.status(200).json({
+    success: true,
+    stats: reportStats,
+    count: reportCount.length === 0 ? 0 : reportCount[0].count,
+  });
 });
 
 router.post('/add-user', async (req, res) => {
