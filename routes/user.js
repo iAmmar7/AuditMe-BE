@@ -425,14 +425,15 @@ router.get('/report-chart', async (req, res) => {
     resolvedExist = false,
     cancelledExist = false;
   for (let i = 0; i < 3; i++) {
-    if (reportStats[i] && reportStats[i].status === 'Pending') pendingExist = true;
-    if (reportStats[i] && reportStats[i].status === 'Resolved') resolvedExist = true;
-    if (reportStats[i] && reportStats[i].status === 'Cancelled') cancelledExist = true;
+    if (reportStats && reportStats[i] && reportStats[i].status === 'Pending') pendingExist = true;
+    if (reportStats && reportStats[i] && reportStats[i].status === 'Resolved') resolvedExist = true;
+    if (reportStats && reportStats[i] && reportStats[i].status === 'Cancelled')
+      cancelledExist = true;
   }
 
-  !resolvedExist ? reportStats.push({ status: 'Resolved', count: 0 }) : null;
-  !pendingExist ? reportStats.push({ status: 'Pending', count: 0 }) : null;
-  !cancelledExist ? reportStats.push({ status: 'Cancelled', count: 0 }) : null;
+  if (!resolvedExist) reportStats.push({ status: 'Resolved', count: 0 });
+  if (!pendingExist) reportStats.push({ status: 'Pending', count: 0 });
+  if (!cancelledExist) reportStats.push({ status: 'Cancelled', count: 0 });
 
   const reportCount = await PrioritiesReport.aggregate([
     { $match: filter === 'overall' ? {} : { region: filter } },
