@@ -404,58 +404,82 @@ router.post('/priorities-reports', async (req, res) => {
 router.get('/report-chart', async (req, res) => {
   const filter = req.query.filter ? req.query.filter : 'overall';
 
-  const reportStats = await PrioritiesReport.aggregate([
-    { $match: filter === 'overall' ? {} : { region: filter } },
-    {
-      $group: {
-        _id: '$status',
-        count: { $sum: 1 },
+  try {
+    const reportStats = await PrioritiesReport.aggregate([
+      { $match: filter === 'overall' ? {} : { region: filter } },
+      {
+        $group: {
+          _id: '$status',
+          count: { $sum: 1 },
+        },
       },
-    },
-    {
-      $project: {
-        _id: 0,
-        status: '$_id',
-        count: { $ifNull: ['$count', 0] },
+      {
+        $project: {
+          _id: 0,
+          status: '$_id',
+          count: { $ifNull: ['$count', 0] },
+        },
       },
-    },
-  ]);
+    ]);
 
-  let pendingExist = false,
-    resolvedExist = false,
-    cancelledExist = false;
-  for (let i = 0; i < 3; i++) {
-    if (reportStats && reportStats[i] && reportStats[i].status === 'Pending') pendingExist = true;
-    if (reportStats && reportStats[i] && reportStats[i].status === 'Resolved') resolvedExist = true;
-    if (reportStats && reportStats[i] && reportStats[i].status === 'Cancelled')
-      cancelledExist = true;
+    let pendingExist = false,
+      resolvedExist = false,
+      cancelledExist = false;
+    for (let i = 0; i < 3; i++) {
+      if (
+        reportStats &&
+        reportStats[i] &&
+        reportStats[i].status &&
+        reportStats[i].status === 'Pending'
+      )
+        pendingExist = true;
+      if (
+        reportStats &&
+        reportStats[i] &&
+        reportStats[i].status &&
+        reportStats[i].status === 'Resolved'
+      )
+        resolvedExist = true;
+      if (
+        reportStats &&
+        reportStats[i] &&
+        reportStats[i].status &&
+        reportStats[i].status === 'Cancelled'
+      )
+        cancelledExist = true;
+    }
+
+    if (!resolvedExist) reportStats.push({ status: 'Resolved', count: 0 });
+    if (!pendingExist) reportStats.push({ status: 'Pending', count: 0 });
+    if (!cancelledExist) reportStats.push({ status: 'Cancelled', count: 0 });
+
+    const reportCount = await PrioritiesReport.aggregate([
+      { $match: filter === 'overall' ? {} : { region: filter } },
+      {
+        $group: {
+          _id: 0,
+          count: { $sum: 1 },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          count: { $ifNull: ['$count', 0] },
+        },
+      },
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      stats: reportStats,
+      count: reportCount.length === 0 ? 0 : reportCount[0].count,
+    });
+  } catch (error) {
+    return res.status(400).json({
+      success: false,
+      message: 'Unknown error',
+    });
   }
-
-  if (!resolvedExist) reportStats.push({ status: 'Resolved', count: 0 });
-  if (!pendingExist) reportStats.push({ status: 'Pending', count: 0 });
-  if (!cancelledExist) reportStats.push({ status: 'Cancelled', count: 0 });
-
-  const reportCount = await PrioritiesReport.aggregate([
-    { $match: filter === 'overall' ? {} : { region: filter } },
-    {
-      $group: {
-        _id: 0,
-        count: { $sum: 1 },
-      },
-    },
-    {
-      $project: {
-        _id: 0,
-        count: { $ifNull: ['$count', 0] },
-      },
-    },
-  ]);
-
-  return res.status(200).json({
-    success: true,
-    stats: reportStats,
-    count: reportCount.length === 0 ? 0 : reportCount[0].count,
-  });
 });
 
 router.post('/add-user', async (req, res) => {
