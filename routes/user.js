@@ -398,15 +398,72 @@ router.post('/priorities-reports', async (req, res) => {
   }
 });
 
-// @route   POST /api/user/report-chart
-// @desc    POST region vise report data
+// @route   GET /api/user/report-chart
+// @desc    GET region vise report data
 // @access  Private
-router.post('/report-chart', async (req, res) => {
-  const filter = req.body.filter ? req.body.filter : 'overall';
+router.get('/report-chart', async (req, res) => {
+  const month = req.query.month ? req.query.month : 'allTime';
 
   try {
-    const reportStats = await PrioritiesReport.aggregate([
-      { $match: filter === 'overall' ? {} : { region: filter } },
+    const regionStats = await PrioritiesReport.aggregate([
+      {
+        $match:
+          month === 'allTime'
+            ? {}
+            : {
+                date: {
+                  $gte: moment(month, 'YYYY-MM-DD')
+                    .utcOffset(0)
+                    .startOf('month')
+                    .startOf('day')
+                    .toDate(),
+                  $lte: moment(month, 'YYYY-MM-DD')
+                    .utcOffset(0)
+                    .endOf('month')
+                    .endOf('day')
+                    .toDate(),
+                },
+              },
+      },
+      {
+        $group: {
+          _id: {
+            status: '$status',
+            region: '$region',
+          },
+          count: { $sum: 1 },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          region: '$_id.region',
+          status: '$_id.status',
+          count: { $ifNull: ['$count', 0] },
+        },
+      },
+    ]);
+
+    const overallStats = await PrioritiesReport.aggregate([
+      {
+        $match:
+          month === 'allTime'
+            ? {}
+            : {
+                date: {
+                  $gte: moment(month, 'YYYY-MM-DD')
+                    .utcOffset(0)
+                    .startOf('month')
+                    .startOf('day')
+                    .toDate(),
+                  $lte: moment(month, 'YYYY-MM-DD')
+                    .utcOffset(0)
+                    .endOf('month')
+                    .endOf('day')
+                    .toDate(),
+                },
+              },
+      },
       {
         $group: {
           _id: '$status',
@@ -422,57 +479,14 @@ router.post('/report-chart', async (req, res) => {
       },
     ]);
 
-    let pendingExist = false,
-      resolvedExist = false,
-      cancelledExist = false;
-    for (let i = 0; i < 3; i++) {
-      if (
-        reportStats &&
-        reportStats[i] &&
-        reportStats[i].status &&
-        reportStats[i].status === 'Pending'
-      )
-        pendingExist = true;
-      if (
-        reportStats &&
-        reportStats[i] &&
-        reportStats[i].status &&
-        reportStats[i].status === 'Resolved'
-      )
-        resolvedExist = true;
-      if (
-        reportStats &&
-        reportStats[i] &&
-        reportStats[i].status &&
-        reportStats[i].status === 'Cancelled'
-      )
-        cancelledExist = true;
-    }
-
-    if (!resolvedExist) reportStats.push({ status: 'Resolved', count: 0 });
-    if (!pendingExist) reportStats.push({ status: 'Pending', count: 0 });
-    if (!cancelledExist) reportStats.push({ status: 'Cancelled', count: 0 });
-
-    const reportCount = await PrioritiesReport.aggregate([
-      { $match: filter === 'overall' ? {} : { region: filter } },
-      {
-        $group: {
-          _id: 0,
-          count: { $sum: 1 },
-        },
-      },
-      {
-        $project: {
-          _id: 0,
-          count: { $ifNull: ['$count', 0] },
-        },
-      },
-    ]);
+    let total = 0;
+    for (let i in overallStats) total += overallStats[i].count;
 
     return res.status(200).json({
       success: true,
-      stats: reportStats,
-      count: reportCount.length === 0 ? 0 : reportCount[0].count,
+      regionStats,
+      overallStats,
+      total,
     });
   } catch (error) {
     return res.status(400).json({
