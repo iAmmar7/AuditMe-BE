@@ -29,15 +29,6 @@ app.use(passport.initialize());
 // Serve images
 app.use(express.static(path.join(__dirname, '/public')));
 
-// Serve Frontend in production
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '/dist')));
-
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '/dist/', 'index.html'));
-  });
-}
-
 // Connect to MongoDB
 require('./db/mongoose');
 
@@ -50,6 +41,15 @@ app.use('/api/user', userAuth, userRole(['auditor', 'rm']), userRoutes);
 app.use('/api/auditor', userAuth, userRole(['auditor']), auditorRoutes);
 app.use('/api/rm', userAuth, userRole(['rm']), rmRoutes);
 // app.use('/api/admin', userAuth, userRole(['admin']), adminRoutes);
+
+// Serve Frontend in production
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, '/dist')));
+
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '/dist/', 'index.html'));
+  });
+}
 
 const port = process.env.PORT || 5000;
 
