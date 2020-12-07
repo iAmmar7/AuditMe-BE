@@ -88,23 +88,25 @@ router.post('/admin/login', async (req, res) => {
 // @desc    user Signup
 // @access  Public
 router.post('/user/signup', async (req, res) => {
-  const { name, email, password, role } = req.body;
+  const { name, batchNumber, password, role } = req.body;
 
-  const admin = await Admin.findOne({ email });
+  const admin = await Admin.findOne({ batchNumber });
 
   if (admin) {
     return res.status(400).json({
       success: false,
-      message: 'You cannot make account with this email',
+      message: 'You cannot make account with this Batch Number',
     });
   }
 
-  const user = await User.findOne({ email });
+  const user = await User.findOne({ batchNumber });
 
   if (user) {
-    return res.status(400).json({ success: false, message: 'Email already exist' });
+    return res
+      .status(400)
+      .json({ success: false, message: 'Account already exist with this Batch Number' });
   } else {
-    const newUser = new User({ name, email, password, role });
+    const newUser = new User({ name, batchNumber, password, role });
 
     bcrypt.genSalt(10, (err, salt) => {
       bcrypt.hash(newUser.password, salt, (err, hash) => {
@@ -123,9 +125,9 @@ router.post('/user/signup', async (req, res) => {
 // @desc    User Login
 // @access  Public
 router.post('/user/login', async (req, res) => {
-  const { email, password } = req.body;
+  const { batchNumber, password } = req.body;
 
-  const user = await User.findOne({ email });
+  const user = await User.findOne({ batchNumber });
 
   if (!user) {
     return res.status(404).json({ success: false, message: 'User not found' });
@@ -137,7 +139,7 @@ router.post('/user/login', async (req, res) => {
       const payload = {
         id: user._id,
         name: user.name,
-        email: user.email,
+        batchNumber: user.batchNumber,
         role: user.role,
       };
 
