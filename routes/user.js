@@ -293,10 +293,7 @@ router.post('/priorities-reports', async (req, res) => {
           _id: '$_id',
           daysOpen: {
             $trunc: {
-              $divide: [
-                { $subtract: [{ $ifNull: ['$dateOfClosure', new Date()] }, '$dateIdentified'] },
-                1000 * 60 * 60 * 24,
-              ],
+              $divide: [{ $subtract: ['$date', '$dateIdentified'] }, 1000 * 60 * 60 * 24],
             },
           },
           root: '$$ROOT',
@@ -738,10 +735,8 @@ router.get('/report-chart', async (req, res) => {
   }
 });
 
-router.post('/update-user', async (req, res) => {
-  const hash = await bcrypt.hash(req.body.password, 10);
-
-  const reports = await User.updateMany({}, { password: hash });
+router.post('/script', async (req, res) => {
+  const reports = await Initiatives.remove({});
 
   return res.json(reports);
 });

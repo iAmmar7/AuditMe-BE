@@ -60,16 +60,8 @@ const InitiativesSchema = new Schema(
       type: String,
       required: true,
     },
-    dateIdentified: {
-      type: Date,
-      required: true,
-    },
     evidencesBefore: [{ type: String }],
     evidencesAfter: [{ type: String }],
-    actionTaken: {
-      type: String,
-      required: true,
-    },
   },
   {
     timestamps: true,

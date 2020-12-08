@@ -38,10 +38,6 @@ const PrioritesReportSchema = new Schema(
       type: String,
       required: true,
     },
-    processSpecialist: {
-      type: String,
-      required: true,
-    },
     type: {
       type: String,
       required: true,

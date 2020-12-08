@@ -48,10 +48,9 @@ router.post('/raise-issue', async (req, res) => {
       }
 
       const report = await PrioritiesReport.create({
-        user: req.user.id,
-        date: moment(),
-        week: moment().week() - moment().startOf('month').week() + 1,
         ...fields,
+        user: req.user.id,
+        week: moment(fields.date).week() - moment(fields.date).startOf('month').week() + 1,
         evidencesBefore: arrayOfEvidences,
       });
 
