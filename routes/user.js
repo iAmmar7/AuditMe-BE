@@ -1,6 +1,7 @@
 const fs = require('fs');
 const express = require('express');
 const moment = require('moment');
+const bcrypt = require('bcryptjs');
 const formidable = require('formidable');
 const router = express.Router();
 
@@ -8,6 +9,7 @@ const router = express.Router();
 const AuditReport = require('../db/models/AuditReport');
 const PrioritiesReport = require('../db/models/PrioritiesReport');
 const Initiatives = require('../db/models/Initiatives');
+const User = require('../db/models/User');
 
 // @route   GET /api/user/audit-report
 // @desc    Submit audit report
@@ -595,7 +597,7 @@ router.get('/report-chart', async (req, res) => {
   const month = req.query.month ? req.query.month : 'allTime';
 
   try {
-    const regionStats = await PrioritiesReport.aggregate([
+    const regionStatusStats = await PrioritiesReport.aggregate([
       {
         $match:
           month === 'allTime'
@@ -633,6 +635,56 @@ router.get('/report-chart', async (req, res) => {
         },
       },
     ]);
+
+    const regionTypeStats = await PrioritiesReport.aggregate([
+      {
+        $match:
+          month === 'allTime'
+            ? {}
+            : {
+                date: {
+                  $gte: moment(month, 'YYYY-MM-DD')
+                    .utcOffset(0)
+                    .startOf('month')
+                    .startOf('day')
+                    .toDate(),
+                  $lte: moment(month, 'YYYY-MM-DD')
+                    .utcOffset(0)
+                    .endOf('month')
+                    .endOf('day')
+                    .toDate(),
+                },
+              },
+      },
+      {
+        $group: {
+          _id: {
+            status: '$status',
+            region: '$region',
+            type: '$type',
+          },
+          count: { $sum: 1 },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          type: '$_id.type',
+          region: '$_id.region',
+          status: '$_id.status',
+          count: { $ifNull: ['$count', 0] },
+        },
+      },
+    ]);
+
+    // Manipulate data for chart
+    for (let i of regionStatusStats) {
+      for (let j of regionTypeStats) {
+        if (i.region === j.region && i.status === j.status) {
+          i[j.type] = j.count;
+        }
+      }
+    }
 
     const overallStats = await PrioritiesReport.aggregate([
       {
@@ -674,7 +726,7 @@ router.get('/report-chart', async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      regionStats,
+      regionStats: regionStatusStats,
       overallStats,
       total,
     });
@@ -686,8 +738,10 @@ router.get('/report-chart', async (req, res) => {
   }
 });
 
-router.post('/add-user', async (req, res) => {
-  const reports = await PrioritiesReport.updateMany({}, { user: '5fb0088bbf9fac391822ea2c' });
+router.post('/update-user', async (req, res) => {
+  const hash = await bcrypt.hash(req.body.password, 10);
+
+  const reports = await User.updateMany({}, { password: hash });
 
   return res.json(reports);
 });
