@@ -7,7 +7,7 @@ const UserSchema = new Schema(
       type: String,
       required: true,
     },
-    batchNumber: {
+    badgeNumber: {
       type: String,
       required: true,
     },
