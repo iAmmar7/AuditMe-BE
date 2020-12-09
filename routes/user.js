@@ -293,7 +293,10 @@ router.post('/priorities-reports', async (req, res) => {
           _id: '$_id',
           daysOpen: {
             $trunc: {
-              $divide: [{ $subtract: ['$date', '$dateIdentified'] }, 1000 * 60 * 60 * 24],
+              $divide: [
+                { $subtract: [{ $ifNull: ['$dateOfClosure', new Date()] }, '$dateIdentified'] },
+                1000 * 60 * 60 * 24,
+              ],
             },
           },
           root: '$$ROOT',
