@@ -141,6 +141,7 @@ router.post('/user/login', async (req, res) => {
         name: user.name,
         badgeNumber: user.badgeNumber,
         role: user.role,
+        isAdmin: user.isAdmin,
       };
 
       // Sign Token

@@ -744,39 +744,105 @@ router.get('/report-chart', async (req, res) => {
 router.post('/delete-image', async (req, res) => {
   const { requestType, imageType, id, url } = req.body;
 
-  // try {
-  if (!requestType || !imageType || !id || !url)
-    throw 'Request type, image type, ID and URL is required';
+  try {
+    if (!requestType || !imageType || !id || !url)
+      throw 'Request type, image type, ID and URL is required';
 
-  let updateObj = {};
+    let updateObj = {};
 
-  if (imageType === 'evidenceBefore') updateObj = { $pull: { evidencesBefore: url } };
-  if (imageType === 'evidenceAfter') updateObj = { $pull: { evidencesAfter: url } };
+    if (imageType === 'evidenceBefore') updateObj = { $pull: { evidencesBefore: url } };
+    if (imageType === 'evidenceAfter') updateObj = { $pull: { evidencesAfter: url } };
 
-  if (requestType === 'issues') {
-    const updateIssue = await PrioritiesReport.findOneAndUpdate({ _id: id }, updateObj, {
-      new: true,
-    });
+    if (requestType === 'issues') {
+      const updateIssue = await PrioritiesReport.findOneAndUpdate({ _id: id }, updateObj, {
+        new: true,
+      });
 
-    if (!updateIssue) throw 'Unable to delete image';
+      if (!updateIssue) throw 'Unable to delete image';
 
-    fs.unlinkSync(`./public${url}`);
+      fs.unlinkSync(`./public${url}`);
+    }
+
+    if (requestType === 'initiatives') {
+      const updateIssue = await Initiatives.findOneAndUpdate({ _id: id }, updateObj, {
+        new: true,
+      });
+
+      if (!updateIssue) throw 'Unable to delete image';
+
+      fs.unlinkSync(`./public${url}`);
+    }
+
+    return res.status(200).json({ success: true, message: 'Image deleted successfully' });
+  } catch (error) {
+    return res.status(400).json({ success: false, message: error });
   }
+});
 
-  if (requestType === 'initiatives') {
-    const updateIssue = await Initiatives.findOneAndUpdate({ _id: id }, updateObj, {
-      new: true,
-    });
+// @route   POST /api/user/delete-issue
+// @desc    Delete saved image
+// @access  Private
+router.delete('/delete-issue/:id', async (req, res) => {
+  try {
+    if (!req.user.isAdmin) throw 'You are not authorized';
 
-    if (!updateIssue) throw 'Unable to delete image';
+    const report = await PrioritiesReport.findOne({ _id: req.params.id });
 
-    fs.unlinkSync(`./public${url}`);
+    if (!report) throw 'Unable to find report';
+
+    if (report.evidencesBefore.length > 0) {
+      for (let url of report.evidencesBefore) {
+        fs.unlinkSync(`./public${url}`);
+      }
+    }
+
+    if (report.evidencesAfter.length > 0) {
+      for (let url of report.evidencesAfter) {
+        fs.unlinkSync(`./public${url}`);
+      }
+    }
+
+    const deleteIssue = await PrioritiesReport.findOneAndRemove({ _id: req.params.id });
+
+    if (!deleteIssue) throw 'Unable to delete issue';
+
+    return res.status(200).json({ success: true, message: 'Deleted successfully' });
+  } catch (error) {
+    return res.status(400).json({ success: false, message: error });
   }
+});
 
-  return res.status(200).json({ success: true, message: 'Image deleted successfully' });
-  // } catch (error) {
-  //   return res.status(400).json({ success: false, message: error });
-  // }
+// @route   POST /api/user/delete-initiative
+// @desc    Delete saved image
+// @access  Private
+router.delete('/delete-initiative/:id', async (req, res) => {
+  try {
+    if (!req.user.isAdmin) throw 'You are not authorized';
+
+    const report = await Initiatives.findOne({ _id: req.params.id });
+
+    if (!report) throw 'Unable to find report';
+
+    if (report.evidencesBefore.length > 0) {
+      for (let url of report.evidencesBefore) {
+        fs.unlinkSync(`./public${url}`);
+      }
+    }
+
+    if (report.evidencesAfter.length > 0) {
+      for (let url of report.evidencesAfter) {
+        fs.unlinkSync(`./public${url}`);
+      }
+    }
+
+    const deleteIssue = await Initiatives.findOneAndRemove({ _id: req.params.id });
+
+    if (!deleteIssue) throw 'Unable to delete issue';
+
+    return res.status(200).json({ success: true, message: 'Deleted successfully' });
+  } catch (error) {
+    return res.status(400).json({ success: false, message: error });
+  }
 });
 
 router.post('/script', async (req, res) => {

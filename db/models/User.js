@@ -20,6 +20,10 @@ const UserSchema = new Schema(
       required: true,
       enum: ['auditor', 'rm'],
     },
+    isAdmin: {
+      type: Boolean,
+      default: false,
+    },
     profile_picture: {
       type: String,
       default: null,
