@@ -738,6 +738,47 @@ router.get('/report-chart', async (req, res) => {
   }
 });
 
+// @route   POST /api/user/delete-image
+// @desc    Delete saved image
+// @access  Private
+router.post('/delete-image', async (req, res) => {
+  const { requestType, imageType, id, url } = req.body;
+
+  // try {
+  if (!requestType || !imageType || !id || !url)
+    throw 'Request type, image type, ID and URL is required';
+
+  let updateObj = {};
+
+  if (imageType === 'evidenceBefore') updateObj = { $pull: { evidencesBefore: url } };
+  if (imageType === 'evidenceAfter') updateObj = { $pull: { evidencesAfter: url } };
+
+  if (requestType === 'issues') {
+    const updateIssue = await PrioritiesReport.findOneAndUpdate({ _id: id }, updateObj, {
+      new: true,
+    });
+
+    if (!updateIssue) throw 'Unable to delete image';
+
+    fs.unlinkSync(`./public${url}`);
+  }
+
+  if (requestType === 'initiatives') {
+    const updateIssue = await Initiatives.findOneAndUpdate({ _id: id }, updateObj, {
+      new: true,
+    });
+
+    if (!updateIssue) throw 'Unable to delete image';
+
+    fs.unlinkSync(`./public${url}`);
+  }
+
+  return res.status(200).json({ success: true, message: 'Image deleted successfully' });
+  // } catch (error) {
+  //   return res.status(400).json({ success: false, message: error });
+  // }
+});
+
 router.post('/script', async (req, res) => {
   const reports = await Initiatives.remove({});
 
