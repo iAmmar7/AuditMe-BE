@@ -845,10 +845,30 @@ router.delete('/delete-initiative/:id', async (req, res) => {
   }
 });
 
-router.post('/script', async (req, res) => {
-  const reports = await Initiatives.remove({});
+// @route   POST /api/user/all-users
+// @desc    List down all users
+// @access  Private
+router.post('/all-users', async (req, res) => {
+  try {
+    if (!req.user.isAdmin) throw 'Unauthorized';
 
-  return res.json(reports);
+    const users = await User.find({});
+
+    if (!users) throw 'No user found';
+
+    return res.status(200).json({ success: true, users });
+  } catch (error) {
+    console.log(error);
+    return res.status(400).json({ success: false, message: error });
+  }
+});
+
+router.post('/script', async (req, res) => {
+  // const reports = await Initiatives.remove({});
+
+  const updateMany = await User.updateMany({}, { password: '321123' });
+
+  return res.json(updateMany);
 });
 
 module.exports = router;
