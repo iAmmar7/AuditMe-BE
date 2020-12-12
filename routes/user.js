@@ -849,16 +849,81 @@ router.delete('/delete-initiative/:id', async (req, res) => {
 // @desc    List down all users
 // @access  Private
 router.post('/all-users', async (req, res) => {
+  let { current, pageSize, badgeNumber, name } = req.body.params;
+  let { nameSorter } = req.body.sorter;
+  let { roleFilter } = req.body.filter;
+
+  current = current ? current : 1;
+  pageSize = pageSize ? pageSize : 10;
+
+  const offset = +pageSize * (+current - 1);
+
+  let matchQuery = [];
+  let sorter = { created: 1 };
+
+  if (badgeNumber) matchQuery.push({ badgeNumber: { $regex: badgeNumber, $options: 'i' } });
+  if (name) matchQuery.push({ name: { $regex: name, $options: 'i' } });
+  if (roleFilter) matchQuery.push({ role: { $in: roleFilter } });
+
+  if (nameSorter === 'ascend') sorter = { name: -1 };
+  if (nameSorter === 'descend') sorter = { name: 1 };
+
   try {
     if (!req.user.isAdmin) throw 'Unauthorized';
 
-    const users = await User.find({});
+    const users = await User.find(matchQuery.length > 0 ? { $and: matchQuery } : {})
+      .limit(pageSize)
+      .skip(offset)
+      .sort(sorter);
+
+    const userCount = await User.find(
+      matchQuery.length > 0 ? { $and: matchQuery } : {},
+    ).countDocuments();
 
     if (!users) throw 'No user found';
 
-    return res.status(200).json({ success: true, users });
+    return res.status(200).json({ success: true, users, total: userCount });
   } catch (error) {
-    console.log(error);
+    return res.status(400).json({ success: false, message: error });
+  }
+});
+
+// @route   POST /api/user/update-user/:id
+// @desc    Update a user
+// @access  Private
+router.post('/update-user/:id', async (req, res) => {
+  const { badgeNumber, name, password } = req.body;
+
+  try {
+    if (!req.user.isAdmin) throw 'Unauthorized';
+
+    const user = await User.findOneAndUpdate(
+      { _id: req.params.id },
+      { badgeNumber, name, password },
+      { new: true },
+    );
+
+    if (!user) throw 'Unable to update the user';
+
+    return res.status(200).json({ success: true, user });
+  } catch (error) {
+    return res.status(400).json({ success: false, message: error });
+  }
+});
+
+// @route   DELETE /api/user/delete-user/:id
+// @desc    Delete a user
+// @access  Private
+router.delete('/delete-user/:id', async (req, res) => {
+  try {
+    if (!req.user.isAdmin) throw 'Unauthorized';
+
+    const user = await User.findOneAndRemove({ _id: req.params.id });
+
+    if (!user) throw 'Unable to delete the user';
+
+    return res.status(200).json({ success: true, user });
+  } catch (error) {
     return res.status(400).json({ success: false, message: error });
   }
 });
