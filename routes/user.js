@@ -190,7 +190,7 @@ router.post('/priority-report/:id', async (req, res) => {
   });
 });
 
-// @route   GET /api/user/priorities-reports
+// @route   POST /api/user/priorities-reports
 // @desc    Get all priorities reports
 // @access  Private
 router.post('/priorities-reports', async (req, res) => {
@@ -401,6 +401,106 @@ router.post('/priorities-reports', async (req, res) => {
   }
 });
 
+// @route   GET /api/user/csv/priorities-reports
+// @desc    Get all priorities reports
+// @access  Private
+router.get('/csv/priorities-reports', async (req, res) => {
+  try {
+    const reports = await PrioritiesReport.aggregate([
+      {
+        $lookup: {
+          from: User.collection.name,
+          localField: 'user',
+          foreignField: '_id',
+          as: 'user',
+        },
+      },
+      { $unwind: '$user' },
+      {
+        $project: {
+          _id: '$_id',
+          daysOpen: {
+            $trunc: {
+              $divide: [
+                { $subtract: [{ $ifNull: ['$dateOfClosure', new Date()] }, '$dateIdentified'] },
+                1000 * 60 * 60 * 24,
+              ],
+            },
+          },
+          root: '$$ROOT',
+        },
+      },
+      { $sort: { createdAt: 1 } },
+      {
+        $lookup: {
+          from: User.collection.name,
+          localField: 'root.resolvedBy',
+          foreignField: '_id',
+          as: 'resolvedBy',
+        },
+      },
+      {
+        $unwind: {
+          path: '$resolvedBy',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          date: '$root.date',
+          week: '$root.week',
+          userName: '$root.user.name',
+          status: '$root.status',
+          type: '$root.type',
+          region: '$root.region',
+          regionalManager: '$root.regionalManager',
+          areaManager: '$root.areaManager',
+          dateIdentified: '$root.dateIdentified',
+          stationNumber: '$root.stationNumber',
+          daysOpen: '$daysOpen',
+          resolvedByName: { $ifNull: ['$resolvedBy.name', null] },
+          dateOfClosure: '$root.dateOfClosure',
+        },
+      },
+    ]);
+
+    if (!reports) return res.status(400).json({ success: false, message: 'No report found' });
+
+    const modifiedReport = [];
+    for (let i in reports) {
+      modifiedReport.push({
+        date: moment(reports[i].date).format('DD-MMM-YY'),
+        week: reports[i].week,
+        processSpecialist: reports[i].userName,
+        status: reports[i].status,
+        type: reports[i].type,
+        region: reports[i].region,
+        regionalManager: reports[i].regionalManager,
+        areaManager: reports[i].areaManager,
+        dateIdentified: moment(reports[i].dateIdentified).format('DD-MMM-YY'),
+        stationNumber: reports[i].stationNumber,
+        daysOpen: reports[i].status === 'Resolved' ? '-' : reports[i].daysOpen,
+        daysResolved: reports[i].status === 'Resolved' ? reports[i].daysOpen : '-',
+        resolvedByName: reports[i].resolvedByName ? reports[i].resolvedByName : '-',
+        dateOfClosure: reports[i].dateOfClosure
+          ? moment(reports[i].dateOfClosure).format('DD-MMM-YY')
+          : '-',
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      reports: modifiedReport,
+    });
+  } catch (error) {
+    return res.status(400).json({
+      success: false,
+      message: 'Unable to fetch reports, try later',
+    });
+  }
+});
+
 // @route   GET /api/user/initiatives-reports
 // @desc    Get all initiatives reports
 // @access  Private
@@ -586,6 +686,67 @@ router.post('/initiatives-reports', async (req, res) => {
     return res.status(400).json({
       success: false,
       message: 'Unable to fetch reports, reload',
+    });
+  }
+});
+
+// @route   GET /api/user/csv/priorities-reports
+// @desc    Get all priorities reports
+// @access  Private
+router.get('/csv/initiatives-reports', async (req, res) => {
+  try {
+    // Get reports
+    const reports = await Initiatives.aggregate([
+      {
+        $lookup: {
+          from: User.collection.name,
+          localField: 'user',
+          foreignField: '_id',
+          as: 'user',
+        },
+      },
+      { $unwind: '$user' },
+      { $sort: { createdAt: 1 } },
+      {
+        $project: {
+          _id: 0,
+          date: '$date',
+          week: '$week',
+          userName: '$user.name',
+          type: '$type',
+          region: '$region',
+          regionalManager: '$regionalManager',
+          areaManager: '$areaManager',
+          stationNumber: '$stationNumber',
+        },
+      },
+    ]);
+
+    if (!reports) return res.status(400).json({ success: false, message: 'No report found' });
+
+    const modifiedReport = [];
+    for (let i in reports) {
+      modifiedReport.push({
+        date: moment(reports[i].date).format('DD-MMM-YY'),
+        week: reports[i].week,
+        processSpecialist: reports[i].userName,
+        type: reports[i].type,
+        region: reports[i].region,
+        regionalManager: reports[i].regionalManager,
+        areaManager: reports[i].areaManager,
+        dateIdentified: moment(reports[i].dateIdentified).format('DD-MMM-YY'),
+        stationNumber: reports[i].stationNumber,
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      reports: modifiedReport,
+    });
+  } catch (error) {
+    return res.status(400).json({
+      success: false,
+      message: 'Unable to fetch reports, try later',
     });
   }
 });
