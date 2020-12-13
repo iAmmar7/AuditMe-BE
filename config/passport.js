@@ -21,7 +21,11 @@ module.exports = (passport) => {
         return done(null, false);
       }
 
-      if (jwt_payload.role === 'auditor' || jwt_payload.role === 'rm') {
+      if (
+        jwt_payload.role === 'auditor' ||
+        jwt_payload.role === 'rm' ||
+        jwt_payload.role === 'viewer'
+      ) {
         const user = await User.findById(jwt_payload.id);
         if (user) {
           return done(null, user);

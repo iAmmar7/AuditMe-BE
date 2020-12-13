@@ -37,7 +37,7 @@ require('./config/passport')(passport);
 
 // Use Routes
 app.use('/api/auth', authRoutes);
-app.use('/api/user', userAuth, userRole(['auditor', 'rm']), userRoutes);
+app.use('/api/user', userAuth, userRole(['auditor', 'rm', 'viewer']), userRoutes);
 app.use('/api/auditor', userAuth, userRole(['auditor']), auditorRoutes);
 app.use('/api/rm', userAuth, userRole(['rm']), rmRoutes);
 // app.use('/api/admin', userAuth, userRole(['admin']), adminRoutes);
