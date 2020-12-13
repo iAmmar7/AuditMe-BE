@@ -18,7 +18,7 @@ const UserSchema = new Schema(
     role: {
       type: String,
       required: true,
-      enum: ['auditor', 'rm'],
+      enum: ['auditor', 'rm', 'viewer'],
     },
     isAdmin: {
       type: Boolean,

@@ -859,7 +859,7 @@ router.post('/all-users', async (req, res) => {
   const offset = +pageSize * (+current - 1);
 
   let matchQuery = [];
-  let sorter = { created: 1 };
+  let sorter = { createdAt: -1 };
 
   if (badgeNumber) matchQuery.push({ badgeNumber: { $regex: badgeNumber, $options: 'i' } });
   if (name) matchQuery.push({ name: { $regex: name, $options: 'i' } });
@@ -886,6 +886,31 @@ router.post('/all-users', async (req, res) => {
   } catch (error) {
     return res.status(400).json({ success: false, message: error });
   }
+});
+
+// @route   POST /api/user/add-user
+// @desc    Add a user
+// @access  Private
+router.post('/add-user', async (req, res) => {
+  const { badgeNumber, name, password, userType } = req.body;
+
+  if (!req.user.isAdmin) return res.status(400).json({ success: false, message: 'Unauthorized' });
+
+  const user = await User.findOne({ badgeNumber });
+
+  if (user)
+    return res
+      .status(400)
+      .json({ success: false, message: 'Account already exist with this Badge Number' });
+
+  const newUser = await User.create({ name, badgeNumber, password, role: userType });
+
+  if (!newUser)
+    return res
+      .status(400)
+      .json({ success: false, message: 'Unable to add user, please try later' });
+
+  return res.status(200).json({ success: true, user: newUser });
 });
 
 // @route   POST /api/user/update-user/:id
