@@ -73,7 +73,7 @@ const PrioritesReportSchema = new Schema(
     status: {
       type: String,
       default: 'Pending',
-      enum: ['Pending', 'Resolved', 'Cancelled'],
+      enum: ['Pending', 'Resolved', 'Maintenance'],
     },
     feedback: {
       type: String,
