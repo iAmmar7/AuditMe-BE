@@ -50,7 +50,7 @@ router.post('/raise-issue', async (req, res) => {
       const report = await PrioritiesReport.create({
         ...fields,
         user: req.user.id,
-        week: moment(fields.date).week() - moment(fields.date).startOf('month').week() + 1,
+        week: moment(fields.date).isoWeek() - moment(fields.date).startOf('month').isoWeek() + 1,
         evidencesBefore: arrayOfEvidences,
       });
 
@@ -320,7 +320,7 @@ router.post('/initiative', async (req, res) => {
       const report = await Initiatives.create({
         ...fields,
         user: req.user.id,
-        week: moment(fields.date).week() - moment(fields.date).startOf('month').week() + 1,
+        week: moment(fields.date).isoWeek() - moment(fields.date).startOf('month').isoWeek() + 1,
         evidencesBefore: arrayOfEvidencesBefore,
         evidencesAfter: arrayOfEvidencesAfter,
       });

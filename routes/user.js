@@ -343,6 +343,8 @@ router.post('/priorities-reports', async (req, res) => {
           dateOfClosure: '$root.dateOfClosure',
           dateIdentified: '$root.dateIdentified',
           actionTaken: '$root.actionTaken',
+          logNumber: '$root.logNumber',
+          maintenanceComment: '$root.maintenanceComment',
           updatedBy: '$root.updatedBy',
           createdAt: '$root.createdAt',
           updatedAt: '$root.updatedAt',
