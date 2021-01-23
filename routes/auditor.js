@@ -50,7 +50,10 @@ router.post('/raise-issue', async (req, res) => {
       const report = await PrioritiesReport.create({
         ...fields,
         user: req.user.id,
-        week: moment(fields.date).isoWeek() - moment(fields.date).startOf('month').isoWeek() + 1,
+        week:
+          moment(fields.date).week() -
+          moment(fields.date).add(0, 'month').startOf('month').week() +
+          1,
         evidencesBefore: arrayOfEvidences,
       });
 
@@ -427,6 +430,43 @@ router.post('/update-initiative/:id', async (req, res) => {
       return res.status(400).json({ success: false, message: error });
     }
   });
+});
+
+router.get('/update-week', async (req, res) => {
+  const { date } = req.body;
+
+  // const allReports = await PrioritiesReport.find({});
+  // console.log(allReports.length);
+
+  // for (let report of allReports) {
+  //   await PrioritiesReport.findOneAndUpdate(
+  //     { _id: report._id },
+  //     {
+  //       week:
+  //         moment(report.date).week() -
+  //         moment(report.date).add(0, 'month').startOf('month').week() +
+  //         1,
+  //     },
+  //     { new: true },
+  //   );
+  // }
+
+  const week1 = moment(date).week() - moment(date).add(0, 'month').startOf('month').week() + 1;
+  const week2 =
+    moment(date).isoWeek() - moment(date).add(0, 'month').startOf('month').isoWeek() + 1;
+
+  console.log(week1, week2);
+
+  const updatedReport = await PrioritiesReport.updateMany(
+    { date: date },
+    {
+      $set: {
+        week: week2,
+      },
+    },
+  );
+
+  return res.json({ message: 'done' });
 });
 
 module.exports = router;
