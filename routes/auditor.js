@@ -3,10 +3,14 @@ const express = require('express');
 const moment = require('moment');
 const formidable = require('formidable');
 const router = express.Router();
+const Jimp = require('jimp');
 
 // Load Models
 const PrioritiesReport = require('../db/models/PrioritiesReport');
 const Initiatives = require('../db/models/Initiatives');
+
+// Load utils
+const compressImage = require('../utils/compressImage');
 
 // @route   GET /api/auditor/test
 // @desc    Test auditor rooutes
@@ -46,6 +50,11 @@ router.post('/raise-issue', async (req, res) => {
           }
         });
       }
+
+      // Check image size and reduce if greater than 1mb
+      arrayOfEvidences.forEach(async (element) => {
+        compressImage(`./public/${element}`);
+      });
 
       const report = await PrioritiesReport.create({
         ...fields,
@@ -199,8 +208,6 @@ router.post('/update-issue/:id', async (req, res) => {
     multiples: true,
   });
 
-  console.log(req.params.id);
-
   if (!req.params.id) return;
 
   const report = await PrioritiesReport.findOne({ _id: req.params.id });
@@ -234,7 +241,10 @@ router.post('/update-issue/:id', async (req, res) => {
         });
       }
 
-      console.log(arrayOfEvidencesBeforeFiles);
+      // Check image size and reduce if greater than 1mb
+      arrayOfEvidencesBeforeFiles.forEach(async (element) => {
+        compressImage(`./public/${element}`);
+      });
 
       let updatedEvidencesBefore = [...report.evidencesBefore, ...arrayOfEvidencesBeforeFiles];
 
@@ -319,6 +329,16 @@ router.post('/initiative', async (req, res) => {
       }
 
       console.log(arrayOfEvidencesBefore, arrayOfEvidencesAfter);
+
+      // Check arrayOfEvidencesBefore image size and reduce if greater than 1mb
+      arrayOfEvidencesBefore.forEach(async (element) => {
+        compressImage(`./public/${element}`);
+      });
+
+      // Check arrayOfEvidencesAfter image size and reduce if greater than 1mb
+      arrayOfEvidencesAfter.forEach(async (element) => {
+        compressImage(`./public/${element}`);
+      });
 
       const report = await Initiatives.create({
         ...fields,

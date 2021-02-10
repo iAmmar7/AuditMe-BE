@@ -945,7 +945,7 @@ router.post('/delete-image', async (req, res) => {
 });
 
 // @route   POST /api/user/delete-issue
-// @desc    Delete saved image
+// @desc    Delete raised issue
 // @access  Private
 router.delete('/delete-issue/:id', async (req, res) => {
   try {
@@ -978,7 +978,7 @@ router.delete('/delete-issue/:id', async (req, res) => {
 });
 
 // @route   POST /api/user/delete-initiative
-// @desc    Delete saved image
+// @desc    Delete an initiative
 // @access  Private
 router.delete('/delete-initiative/:id', async (req, res) => {
   try {
