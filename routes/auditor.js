@@ -3,7 +3,6 @@ const express = require('express');
 const moment = require('moment');
 const formidable = require('formidable');
 const router = express.Router();
-const Jimp = require('jimp');
 
 // Load Models
 const PrioritiesReport = require('../db/models/PrioritiesReport');

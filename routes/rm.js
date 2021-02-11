@@ -7,6 +7,9 @@ const router = express.Router();
 // Load Models
 const PrioritiesReport = require('../db/models/PrioritiesReport');
 
+// Load utils
+const compressImage = require('../utils/compressImage');
+
 // @route   GET /api/rm/test
 // @desc    Test RM rooutes
 // @access  Private
@@ -23,8 +26,6 @@ router.post('/update-issue/:id', async (req, res) => {
     keepExtensions: true,
     multiples: true,
   });
-
-  console.log(req.params.id);
 
   if (!req.params.id) return;
 
@@ -55,6 +56,11 @@ router.post('/update-issue/:id', async (req, res) => {
       }
 
       console.log(arrayOfEvidencesAfterFiles);
+
+      // Check image size and reduce if greater than 1mb
+      arrayOfEvidencesAfterFiles.forEach(async (element) => {
+        compressImage(`./public/${element}`);
+      });
 
       let updatedEvidencesAfter = [...report.evidencesAfter, ...arrayOfEvidencesAfterFiles];
 
