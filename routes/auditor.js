@@ -62,6 +62,7 @@ router.post('/raise-issue', async (req, res) => {
           moment(fields.date).week() -
           moment(fields.date).add(0, 'month').startOf('month').week() +
           1,
+        issueDetails: fields?.issueDetails?.replace(/['"]+/g, ''),
         evidencesBefore: arrayOfEvidences,
       });
 
