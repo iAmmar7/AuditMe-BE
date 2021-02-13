@@ -95,6 +95,10 @@ const PrioritesReportSchema = new Schema(
       type: String,
       default: null,
     },
+    isPrioritized: {
+      type: Boolean,
+      required: true,
+    },
     resolvedBy: {
       type: mongoose.SchemaTypes.ObjectId,
       ref: 'user',

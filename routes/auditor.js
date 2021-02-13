@@ -62,6 +62,7 @@ router.post('/raise-issue', async (req, res) => {
           moment(fields.date).week() -
           moment(fields.date).add(0, 'month').startOf('month').week() +
           1,
+        isPrioritized: fields.priority === 'Priority',
         evidencesBefore: arrayOfEvidences,
       });
 
@@ -252,6 +253,7 @@ router.post('/update-issue/:id', async (req, res) => {
         { _id: req.params.id },
         {
           ...fields,
+          isPrioritized: fields.priority === 'Priority',
           evidencesBefore: updatedEvidencesBefore,
           $push: {
             updatedBy: {

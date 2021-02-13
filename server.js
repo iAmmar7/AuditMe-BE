@@ -16,6 +16,7 @@ const adminRoutes = require('./routes/admin');
 const userRoutes = require('./routes/user');
 const auditorRoutes = require('./routes/auditor');
 const rmRoutes = require('./routes/rm');
+const amRoutes = require('./routes/am');
 
 // Load Middlewares
 const { userAuth, userRole } = require('./middlewares');
@@ -40,6 +41,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/user', userAuth, userRole(['auditor', 'rm', 'am', 'viewer']), userRoutes);
 app.use('/api/auditor', userAuth, userRole(['auditor']), auditorRoutes);
 app.use('/api/rm', userAuth, userRole(['rm']), rmRoutes);
+app.use('/api/am', userAuth, userRole(['am']), amRoutes);
 // app.use('/api/admin', userAuth, userRole(['admin']), adminRoutes);
 
 // Serve Frontend in production

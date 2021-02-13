@@ -194,7 +194,7 @@ router.post('/priority-report/:id', async (req, res) => {
 // @desc    Get all priorities reports
 // @access  Private
 router.post('/priorities-reports', async (req, res) => {
-  const { params, sorter, filter } = req.body;
+  const { params, sorter, filter, isPrioritized = true } = req.body;
   let {
     current,
     pageSize,
@@ -284,9 +284,9 @@ router.post('/priorities-reports', async (req, res) => {
         $match:
           matchQuery.length > 0
             ? {
-                $and: matchQuery,
+                $and: [{ isPrioritized }, ...matchQuery],
               }
-            : {},
+            : { isPrioritized },
       },
       {
         $project: {
@@ -345,6 +345,7 @@ router.post('/priorities-reports', async (req, res) => {
           actionTaken: '$root.actionTaken',
           logNumber: '$root.logNumber',
           maintenanceComment: '$root.maintenanceComment',
+          isPrioritized: '$root.isPrioritized',
           updatedBy: '$root.updatedBy',
           createdAt: '$root.createdAt',
           updatedAt: '$root.updatedAt',
@@ -369,9 +370,9 @@ router.post('/priorities-reports', async (req, res) => {
         $match:
           matchQuery.length > 0
             ? {
-                $and: matchQuery,
+                $and: [{ isPrioritized }, ...matchQuery],
               }
-            : {},
+            : { isPrioritized },
       },
       {
         $group: {
@@ -1122,10 +1123,10 @@ router.delete('/delete-user/:id', async (req, res) => {
   }
 });
 
-router.post('/script', async (req, res) => {
+router.get('/script', async (req, res) => {
   // const reports = await Initiatives.remove({});
 
-  const updateMany = await User.updateMany({}, { password: '321123' });
+  const updateMany = await PrioritesReport.updateMany({}, { isPrioritized: true });
 
   return res.json(updateMany);
 });
