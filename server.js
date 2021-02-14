@@ -10,6 +10,9 @@ const app = express();
 // Configure Environment variables
 dotenv.config();
 
+// Start cron jobs
+require('./utils/cronJobs');
+
 // Load Routes
 const authRoutes = require('./routes/auth');
 const adminRoutes = require('./routes/admin');
