@@ -1124,6 +1124,17 @@ router.delete('/delete-user/:id', async (req, res) => {
   }
 });
 
+// @route   POST /api/user/update-activity
+// @desc    POST update user activity
+// @access  Private
+router.post('/update-activity', async (req, res) => {
+  console.log('Did it run');
+
+  const user = await User.findOneAndUpdate({ _id: req.user.id }, { recentActivity: new Date() });
+
+  return res.json({ success: false, user });
+});
+
 router.get('/script', async (req, res) => {
   // const reports = await Initiatives.remove({});
 

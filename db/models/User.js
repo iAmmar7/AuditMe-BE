@@ -28,6 +28,10 @@ const UserSchema = new Schema(
       type: String,
       default: null,
     },
+    recentActivity: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,
