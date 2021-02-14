@@ -19,6 +19,6 @@ cron.schedule('0 */6 * * *', async () => {
     { createdAt: { $lt: date }, isPrioritized: false, status: { $ne: 'Resolved' } },
     { $set: { isPrioritized: true } },
   )
-    .then((res) => console.log(`Successfully updated ${res?.nModified} issues by cron job`))
+    .then((res) => console.log(`Successfully updated ${res && res.nModified} issues by cron job`))
     .catch((err) => console.log('Issue update failed in cron job', err));
 });
