@@ -483,7 +483,8 @@ router.get('/csv/priorities-reports', async (req, res) => {
         region: reports[i].region,
         regionalManager: reports[i].regionalManager,
         areaManager: reports[i].areaManager,
-        issueDetails: reports[i].issueDetails?.trim()?.replace(/["]+/g, ''),
+        issueDetails:
+          reports[i].issueDetails && reports[i].issueDetails.trim().replace(/["]+/g, ''),
         dateIdentified: moment(reports[i].dateIdentified).format('DD-MMM-YY'),
         stationNumber: reports[i].stationNumber,
         logNumber: reports[i].logNumber,
@@ -742,7 +743,7 @@ router.get('/csv/initiatives-reports', async (req, res) => {
         region: reports[i].region,
         regionalManager: reports[i].regionalManager,
         areaManager: reports[i].areaManager,
-        details: reports[i].details?.trim()?.replace(/["]+/g, ''),
+        details: reports[i].details && reports[i].details.trim().replace(/["]+/g, ''),
         dateIdentified: moment(reports[i].dateIdentified).format('DD-MMM-YY'),
         stationNumber: reports[i].stationNumber,
       });
