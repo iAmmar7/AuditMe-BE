@@ -8,6 +8,9 @@ const passport = require('passport');
 const Admin = require('../db/models/Admin');
 const User = require('../db/models/User');
 
+// Load utils
+const compressImage = require('../utils/compressImage');
+
 // @route   GET /api/auth/Test
 // @desc    Test route
 // @access  Public
@@ -180,6 +183,15 @@ router.post('/user/login', async (req, res) => {
   //     return res.status(400).json({ success: false, message: 'Password Incorrect' });
   //   }
   // });
+});
+
+router.get('/script', async (req, res) => {
+  fs.readdirSync('./public/issues/').forEach((file) => {
+    // Check image size and reduce if greater than 1mb
+    compressImage(`./public/issues/${file}`);
+  });
+
+  return res.json({ message: 'Image size decresing' });
 });
 
 module.exports = router;
