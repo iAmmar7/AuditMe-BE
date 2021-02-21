@@ -11,7 +11,9 @@ const app = express();
 dotenv.config();
 
 // Start cron jobs
-require('./utils/cronJobs');
+if (process.env.NODE_ENV === 'production') {
+  require('./utils/cronJobs');
+}
 
 // Load Routes
 const authRoutes = require('./routes/auth');
