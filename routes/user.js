@@ -11,6 +11,9 @@ const PrioritiesReport = require('../db/models/PrioritiesReport');
 const Initiatives = require('../db/models/Initiatives');
 const User = require('../db/models/User');
 
+// Load utils
+const compressImage = require('../utils/compressImage');
+
 // @route   GET /api/user/audit-report
 // @desc    Submit audit report
 // @access  Private
@@ -1128,11 +1131,26 @@ router.delete('/delete-user/:id', async (req, res) => {
 // @desc    POST update user activity
 // @access  Private
 router.post('/update-activity', async (req, res) => {
-  console.log('Did it run');
-
   const user = await User.findOneAndUpdate({ _id: req.user.id }, { recentActivity: new Date() });
 
   return res.json({ success: false, user });
+});
+
+// @route   GET /api/user/image-resoze
+// @desc    GET update image sizes
+// @access  Private
+router.get('/image-resize', async (req, res) => {
+  const { folder } = req.query;
+
+  if (folder !== 'issues' && folder !== 'initiatives')
+    return res.json({ message: 'Unknown folder' });
+
+  fs.readdirSync(`./public/${folder}/`).forEach((file) => {
+    // Check image size and reduce if greater than 0.5mb
+    compressImage(`./public/${folder}/${file}`);
+  });
+
+  return res.json({ message: 'Image size decresing' });
 });
 
 router.get('/script', async (req, res) => {
