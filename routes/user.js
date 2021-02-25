@@ -201,6 +201,7 @@ router.post('/priorities-reports', async (req, res) => {
   let {
     current,
     pageSize,
+    id,
     date,
     user,
     status,
@@ -225,6 +226,7 @@ router.post('/priorities-reports', async (req, res) => {
   try {
     // Add query params if exist in request
     const matchQuery = [];
+    if (id) matchQuery.push({ id: id });
     if (date)
       matchQuery.push({
         date: {
@@ -326,6 +328,7 @@ router.post('/priorities-reports', async (req, res) => {
         $project: {
           _id: '$_id',
           daysOpen: '$daysOpen',
+          id: '$root.id',
           date: '$root.date',
           week: '$root.week',
           userName: '$root.user.name',
@@ -454,6 +457,7 @@ router.get('/csv/priorities-reports', async (req, res) => {
       {
         $project: {
           _id: 0,
+          id: '$root.id',
           date: '$root.date',
           week: '$root.week',
           userName: '$root.user.name',
@@ -478,6 +482,7 @@ router.get('/csv/priorities-reports', async (req, res) => {
     const modifiedReport = [];
     for (let i in reports) {
       modifiedReport.push({
+        id: reports[i].id,
         date: moment(reports[i].date).format('DD-MMM-YY'),
         week: reports[i].week,
         processSpecialist: reports[i].userName,
@@ -520,6 +525,7 @@ router.post('/initiatives-reports', async (req, res) => {
   let {
     current,
     pageSize,
+    id,
     date,
     user,
     status,
@@ -544,6 +550,7 @@ router.post('/initiatives-reports', async (req, res) => {
   try {
     // Add query params if exist in request
     const matchQuery = [];
+    if (id) matchQuery.push({ id: id });
     if (date)
       matchQuery.push({
         date: {
@@ -630,6 +637,7 @@ router.post('/initiatives-reports', async (req, res) => {
       {
         $project: {
           _id: '$_id',
+          id: '$root.id',
           date: '$root.date',
           week: '$root.week',
           userName: '$root.user.name',
@@ -721,6 +729,7 @@ router.get('/csv/initiatives-reports', async (req, res) => {
       {
         $project: {
           _id: 0,
+          id: '$id',
           date: '$date',
           week: '$week',
           userName: '$user.name',
@@ -739,6 +748,7 @@ router.get('/csv/initiatives-reports', async (req, res) => {
     const modifiedReport = [];
     for (let i in reports) {
       modifiedReport.push({
+        id: reports[i].id,
         date: moment(reports[i].date).format('DD-MMM-YY'),
         week: reports[i].week,
         processSpecialist: reports[i].userName,
@@ -1151,14 +1161,6 @@ router.get('/image-resize', async (req, res) => {
   });
 
   return res.json({ message: 'Image size decresing' });
-});
-
-router.get('/script', async (req, res) => {
-  // const reports = await Initiatives.remove({});
-
-  const updateMany = await PrioritesReport.updateMany({}, { isPrioritized: true });
-
-  return res.json(updateMany);
 });
 
 module.exports = router;

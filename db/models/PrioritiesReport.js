@@ -1,8 +1,14 @@
 const mongoose = require('mongoose');
+const nanoId = require('nanoid');
 const Schema = mongoose.Schema;
 
 const PrioritesReportSchema = new Schema(
   {
+    id: {
+      type: String,
+      default: () => nanoId.customAlphabet('0123456789', 5)(),
+      unique: true,
+    },
     user: {
       type: mongoose.SchemaTypes.ObjectId,
       ref: 'user',
