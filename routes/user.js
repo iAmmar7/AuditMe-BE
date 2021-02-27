@@ -764,7 +764,44 @@ router.post('/initiatives-reports', async (req, res) => {
 // @route   GET /api/user/csv/priorities-reports
 // @desc    Get all priorities reports
 // @access  Private
-router.get('/csv/initiatives-reports', async (req, res) => {
+router.post('/csv/initiatives-reports', async (req, res) => {
+  const {
+    filters: {
+      id,
+      date,
+      user,
+      status,
+      type,
+      region,
+      processSpecialist,
+      areaManager,
+      regionalManager,
+      stationNumber,
+    },
+  } = req.body;
+
+  const matchQuery = [];
+  if (id) matchQuery.push({ id: id });
+  if (date)
+    matchQuery.push({
+      date: {
+        $gte: moment(new Date(date[0])).utcOffset(0).startOf('day').toDate(),
+        $lte: moment(new Date(date[1])).utcOffset(0).endOf('day').toDate(),
+      },
+    });
+  if (user) matchQuery.push({ 'user.name': { $regex: user, $options: 'i' } });
+  if (status) matchQuery.push({ status: { $regex: status, $options: 'i' } });
+  if (type) matchQuery.push({ type: { $regex: type, $options: 'i' } });
+  if (region) matchQuery.push({ region: { $regex: region, $options: 'i' } });
+  if (processSpecialist)
+    matchQuery.push({ processSpecialist: { $regex: processSpecialist, $options: 'i' } });
+  if (regionalManager)
+    matchQuery.push({ regionalManager: { $regex: regionalManager, $options: 'i' } });
+  if (areaManager) matchQuery.push({ areaManager: { $regex: areaManager, $options: 'i' } });
+  if (stationNumber) matchQuery.push({ stationNumber: { $regex: stationNumber, $options: 'i' } });
+
+  console.log('CSV', matchQuery);
+
   try {
     // Get reports
     const reports = await Initiatives.aggregate([
@@ -777,6 +814,14 @@ router.get('/csv/initiatives-reports', async (req, res) => {
         },
       },
       { $unwind: '$user' },
+      {
+        $match:
+          matchQuery.length > 0
+            ? {
+                $and: matchQuery,
+              }
+            : {},
+      },
       { $sort: { createdAt: 1 } },
       {
         $project: {
@@ -819,6 +864,7 @@ router.get('/csv/initiatives-reports', async (req, res) => {
       reports: modifiedReport,
     });
   } catch (error) {
+    console.log(error);
     return res.status(400).json({
       success: false,
       message: 'Unable to fetch reports, try later',
