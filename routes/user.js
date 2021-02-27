@@ -413,7 +413,51 @@ router.post('/priorities-reports', async (req, res) => {
 // @route   GET /api/user/csv/priorities-reports
 // @desc    Get all priorities reports
 // @access  Private
-router.get('/csv/priorities-reports', async (req, res) => {
+router.post('/csv/priorities-reports', async (req, res) => {
+  const {
+    filters: {
+      id,
+      date,
+      user,
+      status,
+      type,
+      region,
+      processSpecialist,
+      areaManager,
+      regionalManager,
+      stationNumber,
+      dateIdentified,
+    },
+    isPrioritized = true,
+  } = req.body;
+
+  const matchQuery = [];
+  if (id) matchQuery.push({ id: id });
+  if (date)
+    matchQuery.push({
+      date: {
+        $gte: moment(new Date(date[0])).utcOffset(0).startOf('day').toDate(),
+        $lte: moment(new Date(date[1])).utcOffset(0).endOf('day').toDate(),
+      },
+    });
+  if (user) matchQuery.push({ 'user.name': { $regex: user, $options: 'i' } });
+  if (status) matchQuery.push({ status: { $regex: status, $options: 'i' } });
+  if (type) matchQuery.push({ type: { $regex: type, $options: 'i' } });
+  if (region) matchQuery.push({ region: { $regex: region, $options: 'i' } });
+  if (processSpecialist)
+    matchQuery.push({ processSpecialist: { $regex: processSpecialist, $options: 'i' } });
+  if (regionalManager)
+    matchQuery.push({ regionalManager: { $regex: regionalManager, $options: 'i' } });
+  if (areaManager) matchQuery.push({ areaManager: { $regex: areaManager, $options: 'i' } });
+  if (stationNumber) matchQuery.push({ stationNumber: { $regex: stationNumber, $options: 'i' } });
+  if (dateIdentified)
+    matchQuery.push({
+      dateIdentified: {
+        $gte: moment(new Date(dateIdentified[0])).utcOffset(0).startOf('day').toDate(),
+        $lte: moment(new Date(dateIdentified[1])).utcOffset(0).endOf('day').toDate(),
+      },
+    });
+
   try {
     const reports = await PrioritiesReport.aggregate([
       {
@@ -425,6 +469,14 @@ router.get('/csv/priorities-reports', async (req, res) => {
         },
       },
       { $unwind: '$user' },
+      {
+        $match:
+          matchQuery.length > 0
+            ? {
+                $and: [{ isPrioritized }, ...matchQuery],
+              }
+            : { isPrioritized },
+      },
       {
         $project: {
           _id: '$_id',
