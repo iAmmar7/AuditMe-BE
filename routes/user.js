@@ -216,7 +216,7 @@ router.post('/priorities-reports', async (req, res) => {
   let { dateSorter, dateIdentifiedSorter, daysOpenSorter } = sorter;
   let { statusFilter, typeFilter, regionFilter } = filter;
 
-  console.log(req.body);
+  console.log('/priorities-reports', req.body);
 
   current = current ? current : 1;
   pageSize = pageSize ? pageSize : 10;
