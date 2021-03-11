@@ -226,7 +226,7 @@ router.post('/priorities-reports', async (req, res) => {
   try {
     // Add query params if exist in request
     const matchQuery = [];
-    if (id) matchQuery.push({ id: id });
+    if (id) matchQuery.push({ id: parseInt(id) });
     if (date)
       matchQuery.push({
         date: {
@@ -432,7 +432,7 @@ router.post('/csv/priorities-reports', async (req, res) => {
   } = req.body;
 
   const matchQuery = [];
-  if (id) matchQuery.push({ id: id });
+  if (id) matchQuery.push({ id: parseInt(id) });
   if (date)
     matchQuery.push({
       date: {
@@ -602,7 +602,7 @@ router.post('/initiatives-reports', async (req, res) => {
   try {
     // Add query params if exist in request
     const matchQuery = [];
-    if (id) matchQuery.push({ id: id });
+    if (id) matchQuery.push({ id: parseInt(id) });
     if (date)
       matchQuery.push({
         date: {
@@ -781,7 +781,7 @@ router.post('/csv/initiatives-reports', async (req, res) => {
   } = req.body;
 
   const matchQuery = [];
-  if (id) matchQuery.push({ id: id });
+  if (id) matchQuery.push({ id: parseInt(id) });
   if (date)
     matchQuery.push({
       date: {

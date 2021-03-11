@@ -1,12 +1,11 @@
 const mongoose = require('mongoose');
-const nanoId = require('nanoid');
 const Schema = mongoose.Schema;
 
 const InitiativesSchema = new Schema(
   {
     id: {
-      type: String,
-      default: () => nanoId.customAlphabet('0123456789', 5)(),
+      type: Number,
+      required: true,
       unique: true,
     },
     user: {
