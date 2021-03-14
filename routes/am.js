@@ -89,4 +89,43 @@ router.post('/update-issue/:id', async (req, res) => {
   });
 });
 
+// @route   POST /api/rm/checklist
+// @desc    Add checklist report
+// @access  Private
+router.post('/checklist', async (req, res) => {
+  const formData = formidable({
+    uploadDir: './public/checklist',
+    keepExtensions: true,
+    multiples: true,
+  });
+
+  formData.parse(req, async (error, fields, files) => {
+    try {
+      if (error) throw 'Image upload error';
+
+      if (files) {
+        Object.keys(files).forEach((file) => {
+          Object.keys(file).forEach((value) => {
+            if (file[value] && file[value].path) {
+              const path = file[value].path.split('public')[1];
+              arrayOfEvidencesBefore.push(path);
+            }
+            if (value === 'path') {
+              const path = file[value].split('public')[1];
+              arrayOfEvidencesBefore.filter((item) => {
+                if (item !== path) arrayOfEvidencesBefore.push(path);
+              });
+            }
+          });
+        });
+      }
+    } catch (error) {
+      if (error && error.name === 'ValidationError') {
+        return res.status(400).json({ success: false, message: 'Input fields validation error' });
+      }
+      return res.status(400).json({ success: false, message: error });
+    }
+  });
+});
+
 module.exports = router;
