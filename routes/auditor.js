@@ -66,7 +66,7 @@ router.post('/raise-issue', async (req, res) => {
       const report = await PrioritiesReport.create({
         ...fields,
         user: req.user.id,
-        id: recentReport[0]?.id + 1,
+        id: recentReport && recentReport[0] && recentReport[0].id + 1,
         week:
           moment(fields.date).week() -
           moment(fields.date).add(0, 'month').startOf('month').week() +
@@ -361,7 +361,7 @@ router.post('/initiative', async (req, res) => {
       const report = await Initiatives.create({
         ...fields,
         user: req.user.id,
-        id: recentReport[0]?.id + 1,
+        id: recentReport && recentReport[0] && recentReport[0].id + 1,
         week: moment(fields.date).isoWeek() - moment(fields.date).startOf('month').isoWeek() + 1,
         evidencesBefore: arrayOfEvidencesBefore,
         evidencesAfter: arrayOfEvidencesAfter,
