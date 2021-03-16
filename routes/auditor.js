@@ -471,20 +471,13 @@ router.post('/update-initiative/:id', async (req, res) => {
   });
 });
 
-router.get('/update-id', async (req, res) => {
-  const all = await PrioritesReport.find({});
+router.get('/script', async (req, res) => {
+  const report = await PrioritesReport.updateMany(
+    { type: 'Bay Violation' },
+    { $set: { type: 'Violation' } },
+  );
 
-  console.log(all.length);
-
-  for (let report of all) {
-    await PrioritesReport.findOneAndUpdate({ _id: report._id }, { isPrioritized: true });
-  }
-
-  const all2 = await PrioritesReport.countDocuments();
-  const priority2 = await PrioritesReport.countDocuments({ isPrioritized: true });
-  const notPrio2 = await PrioritesReport.countDocuments({ isPrioritized: false });
-
-  return res.json({ all2, priority2, notPrio2 });
+  return res.json({ report });
 });
 
 module.exports = router;

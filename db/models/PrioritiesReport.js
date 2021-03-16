@@ -48,7 +48,6 @@ const PrioritesReportSchema = new Schema(
       required: true,
       enum: [
         'Customer Experience',
-        'Bay Violation',
         'Housekeeping',
         'Customer Mistreatment',
         'Initiative',
