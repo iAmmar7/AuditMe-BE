@@ -55,10 +55,18 @@ router.post('/raise-issue', async (req, res) => {
         compressImage(`./public/${element}`);
       });
 
+      // Get the most recent report for the ID
+      const recentReport = await PrioritesReport.find({})
+        .select('id')
+        .lean()
+        .sort({ createdAt: -1 })
+        .limit(1);
+
+      // Save the report
       const report = await PrioritiesReport.create({
         ...fields,
         user: req.user.id,
-        id: (await PrioritesReport.countDocuments()) + 1,
+        id: recentReport && recentReport[0] && recentReport[0].id + 1,
         week:
           moment(fields.date).week() -
           moment(fields.date).add(0, 'month').startOf('month').week() +
@@ -342,10 +350,18 @@ router.post('/initiative', async (req, res) => {
         compressImage(`./public/${element}`);
       });
 
+      // Get the most recent initiative for the ID
+      const recentReport = await Initiatives.find({})
+        .select('id')
+        .lean()
+        .sort({ createdAt: -1 })
+        .limit(1);
+
+      // Save the initiative
       const report = await Initiatives.create({
         ...fields,
         user: req.user.id,
-        id: (await Initiatives.countDocuments()) + 1,
+        id: recentReport && recentReport[0] && recentReport[0].id + 1,
         week: moment(fields.date).isoWeek() - moment(fields.date).startOf('month').isoWeek() + 1,
         evidencesBefore: arrayOfEvidencesBefore,
         evidencesAfter: arrayOfEvidencesAfter,
@@ -455,20 +471,13 @@ router.post('/update-initiative/:id', async (req, res) => {
   });
 });
 
-router.get('/update-id', async (req, res) => {
-  const all = await PrioritesReport.find({});
+router.get('/script', async (req, res) => {
+  const report = await PrioritesReport.updateMany(
+    { type: 'Bay Violation' },
+    { $set: { type: 'Violation' } },
+  );
 
-  console.log(all.length);
-
-  for (let report of all) {
-    await PrioritesReport.findOneAndUpdate({ _id: report._id }, { isPrioritized: true });
-  }
-
-  const all2 = await PrioritesReport.countDocuments();
-  const priority2 = await PrioritesReport.countDocuments({ isPrioritized: true });
-  const notPrio2 = await PrioritesReport.countDocuments({ isPrioritized: false });
-
-  return res.json({ all2, priority2, notPrio2 });
+  return res.json({ report });
 });
 
 module.exports = router;
