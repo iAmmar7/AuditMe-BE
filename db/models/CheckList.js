@@ -3,9 +3,8 @@ const Schema = mongoose.Schema;
 
 const CheckListSchema = new Schema(
   {
-    BEName: {
-      type: mongoose.SchemaTypes.ObjectId,
-      ref: 'user',
+    BENumber: {
+      type: String,
       required: true,
     },
     stationName: {
@@ -13,8 +12,9 @@ const CheckListSchema = new Schema(
       required: true,
     },
     SMName: {
-      type: mongoose.SchemaTypes.ObjectId,
-      ref: 'user',
+      // type: mongoose.SchemaTypes.ObjectId,
+      // ref: 'user',
+      type: String,
       required: true,
     },
     AMName: {
@@ -120,7 +120,7 @@ const CheckListSchema = new Schema(
     question7: {
       text: {
         type: String,
-        default: 'Waste Bin is not overfilled - No posters and stickers at walls',
+        default: 'Waste Bin is not overfilled - No posters and stickers at walls.',
       },
       answer: {
         type: Boolean,
@@ -196,7 +196,7 @@ const CheckListSchema = new Schema(
     question12: {
       text: {
         type: String,
-        default: 'Covid related stckers are well in place',
+        default: 'Covid related stckers are well in place.',
       },
       answer: {
         type: Boolean,
@@ -212,7 +212,7 @@ const CheckListSchema = new Schema(
       text: {
         type: String,
         default:
-          'VAT certificate has been displayed min. at 2 visible locations - One must be near POS',
+          'VAT certificate has been displayed min. at 2 visible locations - One must be near POS.',
       },
       answer: {
         type: Boolean,

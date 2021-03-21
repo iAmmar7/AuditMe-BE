@@ -6,6 +6,7 @@ const router = express.Router();
 
 // Load Models
 const PrioritiesReport = require('../db/models/PrioritiesReport');
+const CheckList = require('../db/models/CheckList');
 
 // Load utils
 const compressImage = require('../utils/compressImage');
@@ -100,26 +101,66 @@ router.post('/checklist', async (req, res) => {
   });
 
   formData.parse(req, async (error, fields, files) => {
+    const { BENumber, stationName, SMName, date, ...questions } = fields;
+    let images = {};
     try {
       if (error) throw 'Image upload error';
 
+      // Extract files path from files object
       if (files) {
-        Object.keys(files).forEach((file) => {
-          Object.keys(file).forEach((value) => {
-            if (file[value] && file[value].path) {
-              const path = file[value].path.split('public')[1];
-              arrayOfEvidencesBefore.push(path);
-            }
-            if (value === 'path') {
-              const path = file[value].split('public')[1];
-              arrayOfEvidencesBefore.filter((item) => {
-                if (item !== path) arrayOfEvidencesBefore.push(path);
-              });
-            }
+        Object.keys(files).forEach((key) => {
+          if (Array.isArray(files[key])) {
+            Object.keys(files[key]).forEach((image) => {
+              const path = files[key][image].path;
+              images = { ...images, [key]: images[key] ? [...images[key], path] : [path] };
+            });
+          } else {
+            const path = files[key].path;
+            images = { ...images, [key]: images[key] ? [...images[key], path] : [path] };
+          }
+        });
+      }
+
+      // Check image size and reduce if greater than 1mb
+      Object.keys(images).forEach((image) => {
+        images[image].forEach((path) => {
+          compressImage(`./${path}`);
+        });
+      });
+
+      // Create questions object for DB
+      let questionsData = {};
+      Object.keys(questions).forEach((key) => {
+        questionsData[key] = {
+          answer: questions[key],
+          images: images[key] ? images[key] : [],
+        };
+      });
+
+      // Save the checklist
+      const checkList = await CheckList.create({
+        BENumber,
+        stationName,
+        SMName,
+        date,
+        AMName: req.user.id,
+        ...questionsData,
+      });
+
+      if (!checkList) throw 'Unable to save checklist';
+
+      return res.status(200).json({ success: true, checkList });
+    } catch (error) {
+      // Delete all images from server
+      if (images) {
+        Object.keys(images).forEach((image) => {
+          images[image].forEach((path) => {
+            fs.unlinkSync(path);
           });
         });
       }
-    } catch (error) {
+
+      // Throw validation error if any
       if (error && error.name === 'ValidationError') {
         return res.status(400).json({ success: false, message: 'Input fields validation error' });
       }
