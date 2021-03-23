@@ -6,10 +6,11 @@ const formidable = require('formidable');
 const router = express.Router();
 
 // Load Models
+const User = require('../db/models/User');
 const AuditReport = require('../db/models/AuditReport');
 const PrioritiesReport = require('../db/models/PrioritiesReport');
 const Initiatives = require('../db/models/Initiatives');
-const User = require('../db/models/User');
+const Feedback = require('../db/models/Feedback');
 
 // Load utils
 const compressImage = require('../utils/compressImage');
@@ -1242,6 +1243,18 @@ router.post('/update-activity', async (req, res) => {
   const user = await User.findOneAndUpdate({ _id: req.user.id }, { recentActivity: new Date() });
 
   return res.json({ success: false, user });
+});
+
+// @route   POST /api/user/feedback
+// @desc    Fill feedback form
+// @access  Private
+router.post('/feedback', async (req, res) => {
+  const feedback = await Feedback.create({ userId: req.user.id, ...req.body });
+
+  if (!feedback)
+    return res.status(400).json({ success: false, message: 'Unable to save feedback form' });
+
+  return res.status(200).json({ success: true, feedback });
 });
 
 // @route   GET /api/user/image-resoze
