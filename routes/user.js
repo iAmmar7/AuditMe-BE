@@ -1257,6 +1257,203 @@ router.post('/feedback', async (req, res) => {
   return res.status(200).json({ success: true, feedback });
 });
 
+// @route   GET /api/user/dashboard-timeline
+// @desc    Get the data for dashboard timeline
+// @access  Private
+router.get('/dashboard-timeline', async (req, res) => {
+  try {
+    const openReports = await PrioritiesReport.aggregate([
+      {
+        $lookup: {
+          from: User.collection.name,
+          localField: 'user',
+          foreignField: '_id',
+          as: 'user',
+        },
+      },
+      { $unwind: '$user' },
+      {
+        $match: {
+          status: 'Pending',
+        },
+      },
+      {
+        $project: {
+          _id: '$_id',
+          daysOpen: {
+            $trunc: {
+              $divide: [
+                { $subtract: [{ $ifNull: ['$dateOfClosure', new Date()] }, '$dateIdentified'] },
+                1000 * 60 * 60 * 24,
+              ],
+            },
+          },
+          root: '$$ROOT',
+        },
+      },
+      {
+        $lookup: {
+          from: User.collection.name,
+          localField: 'root.resolvedBy',
+          foreignField: '_id',
+          as: 'resolvedBy',
+        },
+      },
+      {
+        $unwind: {
+          path: '$resolvedBy',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $project: {
+          _id: '$_id',
+          daysOpen: '$daysOpen',
+          id: '$root.id',
+          date: '$root.date',
+          week: '$root.week',
+          userName: '$root.user.name',
+          userId: '$root.user._id',
+          resolvedByName: { $ifNull: ['$resolvedBy.name', null] },
+          resolvedById: { $ifNull: ['$resolvedBy._id', null] },
+          type: '$root.type',
+          status: '$root.status',
+          region: '$root.region',
+          areaManager: '$root.areaManager',
+          regionalManager: '$root.regionalManager',
+          processSpecialist: '$root.processSpecialist',
+          issueDetails: '$root.issueDetails',
+          stationNumber: '$root.stationNumber',
+          evidencesBefore: '$root.evidencesBefore',
+          evidencesAfter: '$root.evidencesAfter',
+          feedback: '$root.feedback',
+          dateOfClosure: '$root.dateOfClosure',
+          dateIdentified: '$root.dateIdentified',
+          actionTaken: '$root.actionTaken',
+          logNumber: '$root.logNumber',
+          maintenanceComment: '$root.maintenanceComment',
+          isPrioritized: '$root.isPrioritized',
+          updatedBy: '$root.updatedBy',
+          createdAt: '$root.createdAt',
+          updatedAt: '$root.updatedAt',
+        },
+      },
+    ]);
+
+    if (!openReports) throw 'Unable to fetch open reports';
+
+    const closedReports = await PrioritiesReport.aggregate([
+      {
+        $lookup: {
+          from: User.collection.name,
+          localField: 'user',
+          foreignField: '_id',
+          as: 'user',
+        },
+      },
+      { $unwind: '$user' },
+      {
+        $match: {
+          $and: [
+            {
+              date: {
+                $gte: moment().utcOffset(0).subtract(29, 'days').startOf('day').toDate(),
+                $lte: moment().utcOffset(0).endOf('day').toDate(),
+              },
+            },
+            { status: { $ne: 'Pending' } },
+          ],
+        },
+      },
+      {
+        $project: {
+          _id: '$_id',
+          daysOpen: {
+            $trunc: {
+              $divide: [
+                { $subtract: [{ $ifNull: ['$dateOfClosure', new Date()] }, '$dateIdentified'] },
+                1000 * 60 * 60 * 24,
+              ],
+            },
+          },
+          root: '$$ROOT',
+        },
+      },
+      {
+        $lookup: {
+          from: User.collection.name,
+          localField: 'root.resolvedBy',
+          foreignField: '_id',
+          as: 'resolvedBy',
+        },
+      },
+      {
+        $unwind: {
+          path: '$resolvedBy',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $project: {
+          _id: '$_id',
+          daysOpen: '$daysOpen',
+          id: '$root.id',
+          date: '$root.date',
+          week: '$root.week',
+          userName: '$root.user.name',
+          userId: '$root.user._id',
+          resolvedByName: { $ifNull: ['$resolvedBy.name', null] },
+          resolvedById: { $ifNull: ['$resolvedBy._id', null] },
+          type: '$root.type',
+          status: '$root.status',
+          region: '$root.region',
+          areaManager: '$root.areaManager',
+          regionalManager: '$root.regionalManager',
+          processSpecialist: '$root.processSpecialist',
+          issueDetails: '$root.issueDetails',
+          stationNumber: '$root.stationNumber',
+          evidencesBefore: '$root.evidencesBefore',
+          evidencesAfter: '$root.evidencesAfter',
+          feedback: '$root.feedback',
+          dateOfClosure: '$root.dateOfClosure',
+          dateIdentified: '$root.dateIdentified',
+          actionTaken: '$root.actionTaken',
+          logNumber: '$root.logNumber',
+          maintenanceComment: '$root.maintenanceComment',
+          isPrioritized: '$root.isPrioritized',
+          updatedBy: '$root.updatedBy',
+          createdAt: '$root.createdAt',
+          updatedAt: '$root.updatedAt',
+        },
+      },
+    ]);
+
+    if (!closedReports) throw 'Unable to fetch closed reports';
+
+    const openObservations = [],
+      openIssues = [],
+      closedObservations = [],
+      closedIssues = [];
+    for (let i in openReports) {
+      if (openReports[i].isPrioritized) openIssues.push(openReports[i]);
+      else openObservations.push(openReports[i]);
+    }
+    for (let i in closedReports) {
+      if (closedReports[i].isPrioritized) closedIssues.push(closedReports[i]);
+      else closedObservations.push(closedReports[i]);
+    }
+
+    return res
+      .status(200)
+      .json({ success: true, openObservations, openIssues, closedObservations, closedIssues });
+  } catch (err) {
+    return res.status(400).json({
+      success: false,
+      message: 'Unable to fetch data, reload',
+    });
+  }
+});
+
 // @route   GET /api/user/image-resoze
 // @desc    GET update image sizes
 // @access  Private
