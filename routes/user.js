@@ -1257,6 +1257,137 @@ router.post('/feedback', async (req, res) => {
   return res.status(200).json({ success: true, feedback });
 });
 
+// @route   POST /api/user/feedback-reports
+// @desc    Get all feedback reports
+// @access  Private
+router.post('/feedback-reports', async (req, res) => {
+  const { params, sorter, filter } = req.body;
+  let {
+    current,
+    pageSize,
+    date,
+    name,
+    badgeNumber,
+    department,
+    otherDepartment,
+    subject,
+    message,
+  } = params;
+  let { dateSorter } = sorter;
+  let { departmentFilter } = filter;
+
+  console.log('/feedback-reports', req.body);
+
+  current = current ? current : 1;
+  pageSize = pageSize ? pageSize : 10;
+
+  const offset = +pageSize * (+current - 1);
+
+  try {
+    // Add query params if exist in request
+    const matchQuery = [];
+    if (date)
+      matchQuery.push({
+        createdAt: {
+          $gte: moment(new Date(date[0])).utcOffset(0).startOf('day').toDate(),
+          $lte: moment(new Date(date[1])).utcOffset(0).endOf('day').toDate(),
+        },
+      });
+    if (name) matchQuery.push({ name: { $regex: name, $options: 'i' } });
+    if (badgeNumber) matchQuery.push({ badgeNumber: { $regex: badgeNumber, $options: 'i' } });
+    if (department) matchQuery.push({ department: { $regex: department, $options: 'i' } });
+    if (otherDepartment)
+      matchQuery.push({ otherDepartment: { $regex: otherDepartment, $options: 'i' } });
+    if (subject) matchQuery.push({ subject: { $regex: subject, $options: 'i' } });
+    if (message) matchQuery.push({ message: { $regex: message, $options: 'i' } });
+
+    // Add sorter if exist in request
+    let sortBy = { createdAt: -1 };
+    if (dateSorter === 'ascend') sortBy = { createdAt: +1 };
+
+    // Add filter if exist in request
+    if (departmentFilter) matchQuery.push({ department: { $in: departmentFilter } });
+
+    console.log(matchQuery);
+
+    const feedbacks = await Feedback.aggregate([
+      {
+        $lookup: {
+          from: User.collection.name,
+          localField: 'userId',
+          foreignField: '_id',
+          as: 'user',
+        },
+      },
+      { $unwind: '$user' },
+      { $match: matchQuery.length > 0 ? { $and: matchQuery } : {} },
+      { $sort: sortBy },
+      { $limit: +pageSize + offset },
+      { $skip: offset },
+      {
+        $project: {
+          _id: '$_id',
+          userId: { $ifNull: ['$user._id', null] },
+          userName: { $ifNull: ['$user.name', null] },
+          userBadgeNumber: { $ifNull: ['$user.badgeNumber', null] },
+          name: '$name',
+          badgeNumber: '$badgeNumber',
+          isAnonymous: '$isAnonymous',
+          department: '$department',
+          otherDepartment: { $ifNull: ['$otherDepartment', null] },
+          subject: '$subject',
+          message: '$message',
+          createdAt: '$createdAt',
+          updatedAt: '$updatedAt',
+        },
+      },
+    ]);
+
+    if (!feedbacks) return res.status(400).json({ success: false, message: 'No report found' });
+
+    // Get reports count
+    const feedbacksCount = await Feedback.aggregate([
+      {
+        $lookup: {
+          from: User.collection.name,
+          localField: 'userId',
+          foreignField: '_id',
+          as: 'user',
+        },
+      },
+      { $unwind: '$user' },
+      { $match: matchQuery.length > 0 ? { $and: matchQuery } : {} },
+      {
+        $group: {
+          _id: 0,
+          count: { $sum: 1 },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          count: '$count',
+        },
+      },
+    ]);
+
+    if (!feedbacksCount)
+      return res.status(400).json({ success: false, message: 'Unable to calculate report count' });
+
+    return res.status(200).json({
+      success: true,
+      reports: feedbacks,
+      totalReports: feedbacksCount.length < 1 ? 0 : feedbacksCount[0].count,
+    });
+  } catch (error) {
+    return res.status(400).json({
+      success: false,
+      message: 'Unable to fetch reports, reload',
+      error,
+    });
+  }
+});
+
 // @route   GET /api/user/dashboard-timeline
 // @desc    Get the data for dashboard timeline
 // @access  Private
