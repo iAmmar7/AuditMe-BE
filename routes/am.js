@@ -101,7 +101,7 @@ router.post('/checklist', async (req, res) => {
   });
 
   formData.parse(req, async (error, fields, files) => {
-    const { BENumber, stationName, SMName, date, ...questions } = fields;
+    const { BENumber, region, RMName, stationName, date, ...questions } = fields;
     let images = {};
     try {
       if (error) throw 'Image upload error';
@@ -141,7 +141,8 @@ router.post('/checklist', async (req, res) => {
       const checkList = await CheckList.create({
         BENumber,
         stationName,
-        SMName,
+        region,
+        RMName,
         date,
         AMName: req.user.id,
         ...questionsData,

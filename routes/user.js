@@ -1585,6 +1585,25 @@ router.get('/dashboard-timeline', async (req, res) => {
   }
 });
 
+// @route   GET /api/user/regional-managers
+// @desc    Get the list regional managers name
+// @access  Private
+router.get('/regional-managers', async (req, res) => {
+  try {
+    const users = await User.find({ role: 'rm' }).select('_id name').lean();
+
+    if (!users) throw 'Unable to fetch regional managers';
+
+    return res.status(200).json({ success: true, regionalManagers: users });
+  } catch (error) {
+    return res.status(400).json({
+      success: false,
+      message: 'Unable to fetch data, reload',
+      error,
+    });
+  }
+});
+
 // @route   GET /api/user/image-resoze
 // @desc    GET update image sizes
 // @access  Private

@@ -7,13 +7,26 @@ const CheckListSchema = new Schema(
       type: String,
       required: true,
     },
-    stationName: {
+    region: {
       type: String,
+      enum: [
+        'WR-North',
+        'WR-South',
+        'CR-East',
+        'CR-South',
+        'CR-North',
+        'Southern',
+        'ER-North',
+        'ER-South',
+      ],
       required: true,
     },
-    SMName: {
-      // type: mongoose.SchemaTypes.ObjectId,
-      // ref: 'user',
+    RMName: {
+      type: mongoose.SchemaTypes.ObjectId,
+      ref: 'user',
+      required: true,
+    },
+    stationName: {
       type: String,
       required: true,
     },
