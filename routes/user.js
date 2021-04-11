@@ -1436,6 +1436,7 @@ router.get('/dashboard-timeline', async (req, res) => {
           preserveNullAndEmptyArrays: true,
         },
       },
+      { $sort: { 'root.createdAt': -1 } },
       {
         $project: {
           _id: '$_id',
