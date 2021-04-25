@@ -5,8 +5,7 @@ const formidable = require('formidable');
 const router = express.Router();
 
 // Load Models
-const PrioritiesReport = require('../db/models/PrioritiesReport');
-const Initiatives = require('../db/models/Initiatives');
+const { PrioritiesReport, Initiatives } = require('../db/models');
 
 // Load utils
 const compressImage = require('../utils/compressImage');
@@ -61,8 +60,6 @@ router.post('/raise-issue', async (req, res) => {
         .lean()
         .sort({ createdAt: -1 })
         .limit(1);
-
-      console.log('ppeeppeep', fields.isPrioritized);
 
       // Save the report
       const report = await PrioritiesReport.create({

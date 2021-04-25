@@ -3,7 +3,11 @@ const Schema = mongoose.Schema;
 
 const CheckListSchema = new Schema(
   {
-    BENumber: {
+    date: {
+      type: Date,
+      required: true,
+    },
+    stationName: {
       type: String,
       required: true,
     },
@@ -26,17 +30,9 @@ const CheckListSchema = new Schema(
       ref: 'user',
       required: true,
     },
-    stationName: {
-      type: String,
-      required: true,
-    },
     AMName: {
       type: mongoose.SchemaTypes.ObjectId,
       ref: 'user',
-      required: true,
-    },
-    date: {
-      type: Date,
       required: true,
     },
     question1: {

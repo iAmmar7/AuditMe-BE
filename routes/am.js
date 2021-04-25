@@ -5,8 +5,7 @@ const formidable = require('formidable');
 const router = express.Router();
 
 // Load Models
-const PrioritiesReport = require('../db/models/PrioritiesReport');
-const CheckList = require('../db/models/CheckList');
+const { PrioritiesReport, CheckList } = require('../db/models');
 
 // Load utils
 const compressImage = require('../utils/compressImage');
@@ -90,7 +89,7 @@ router.post('/update-issue/:id', async (req, res) => {
   });
 });
 
-// @route   POST /api/rm/checklist
+// @route   POST /api/am/checklist
 // @desc    Add checklist report
 // @access  Private
 router.post('/checklist', async (req, res) => {
@@ -101,7 +100,7 @@ router.post('/checklist', async (req, res) => {
   });
 
   formData.parse(req, async (error, fields, files) => {
-    const { BENumber, region, RMName, stationName, date, ...questions } = fields;
+    const { date, stationName, region, RMName, ...questions } = fields;
     let images = {};
     try {
       if (error) throw 'Image upload error';
@@ -111,11 +110,11 @@ router.post('/checklist', async (req, res) => {
         Object.keys(files).forEach((key) => {
           if (Array.isArray(files[key])) {
             Object.keys(files[key]).forEach((image) => {
-              const path = files[key][image].path;
+              const path = files[key][image].path.split('public')[1];
               images = { ...images, [key]: images[key] ? [...images[key], path] : [path] };
             });
           } else {
-            const path = files[key].path;
+            const path = files[key].path.split('public')[1];
             images = { ...images, [key]: images[key] ? [...images[key], path] : [path] };
           }
         });
@@ -124,7 +123,7 @@ router.post('/checklist', async (req, res) => {
       // Check image size and reduce if greater than 1mb
       Object.keys(images).forEach((image) => {
         images[image].forEach((path) => {
-          compressImage(`./${path}`);
+          compressImage(`./public/${path}`);
         });
       });
 
@@ -139,11 +138,10 @@ router.post('/checklist', async (req, res) => {
 
       // Save the checklist
       const checkList = await CheckList.create({
-        BENumber,
+        date,
         stationName,
         region,
         RMName,
-        date,
         AMName: req.user.id,
         ...questionsData,
       });
@@ -168,6 +166,43 @@ router.post('/checklist', async (req, res) => {
       return res.status(400).json({ success: false, message: error });
     }
   });
+});
+
+// @route   POST /api/am/checklist/delete-image
+// @desc    Delete saved image
+// @access  Private
+router.post('/checklist/delete-image', async (req, res) => {
+  const { id, questionNumber, url } = req.body;
+
+  try {
+    if (!id || !questionNumber || !url) throw 'Request ID, question number and URL is required';
+
+    const checklist = await CheckList.findOne({ _id: id }).select(questionNumber).lean();
+    const imageArray = checklist[questionNumber].images.filter((item) => item !== url);
+
+    const updateChecklist = await CheckList.findOneAndUpdate(
+      { _id: id },
+      {
+        [questionNumber]: {
+          text: checklist[questionNumber].text,
+          answer: checklist[questionNumber].answer,
+          images: imageArray,
+        },
+      },
+      {
+        new: true,
+      },
+    );
+
+    if (!updateChecklist) throw 'Unable to delete image';
+
+    fs.unlinkSync(`./public${url}`);
+
+    return res.status(200).json({ success: true, message: 'Image deleted successfully' });
+  } catch (error) {
+    console.log(error);
+    return res.status(400).json({ success: false, message: error });
+  }
 });
 
 module.exports = router;

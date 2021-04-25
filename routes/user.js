@@ -6,11 +6,14 @@ const formidable = require('formidable');
 const router = express.Router();
 
 // Load Models
-const User = require('../db/models/User');
-const AuditReport = require('../db/models/AuditReport');
-const PrioritiesReport = require('../db/models/PrioritiesReport');
-const Initiatives = require('../db/models/Initiatives');
-const Feedback = require('../db/models/Feedback');
+const {
+  User,
+  AuditReport,
+  PrioritiesReport,
+  Initiatives,
+  Feedback,
+  CheckList,
+} = require('../db/models');
 
 // Load utils
 const compressImage = require('../utils/compressImage');
@@ -1582,6 +1585,185 @@ router.get('/dashboard-timeline', async (req, res) => {
     return res.status(400).json({
       success: false,
       message: 'Unable to fetch data, reload',
+    });
+  }
+});
+
+// @route   POST /api/user/checklist-reports
+// @desc    Get all checklist reports
+// @access  Private
+router.post('/checklist-reports', async (req, res) => {
+  const { params, sorter, filter } = req.body;
+  let {
+    current,
+    pageSize,
+    date,
+    stationName,
+    region,
+    regionalManagerName,
+    areaManagerName,
+  } = params;
+  let { dateSorter } = sorter;
+  let { regionFilter } = filter;
+
+  console.log('/checkist-reports', req.body);
+
+  current = current ? current : 1;
+  pageSize = pageSize ? pageSize : 10;
+
+  const offset = +pageSize * (+current - 1);
+
+  try {
+    // Add query params if exist in request
+    const matchQuery = [];
+    if (date)
+      matchQuery.push({
+        date: {
+          $gte: moment(new Date(date[0])).utcOffset(0).startOf('day').toDate(),
+          $lte: moment(new Date(date[1])).utcOffset(0).endOf('day').toDate(),
+        },
+      });
+    if (stationName) matchQuery.push({ stationName: { $regex: stationName, $options: 'i' } });
+    if (region) matchQuery.push({ region: { $regex: region, $options: 'i' } });
+    if (areaManagerName)
+      matchQuery.push({ 'areaManager.name': { $regex: areaManagerName, $options: 'i' } });
+    if (regionalManagerName)
+      matchQuery.push({ 'regionalManager.name': { $regex: regionalManagerName, $options: 'i' } });
+
+    // Add sorter if exist in request
+    let sortBy = { createdAt: -1 };
+    if (dateSorter === 'ascend') sortBy = { date: +1 };
+    if (dateSorter === 'descend') sortBy = { date: -1 };
+
+    // Add filter if exist in request
+    if (regionFilter) matchQuery.push({ region: { $in: regionFilter } });
+
+    console.log(matchQuery);
+
+    const checklist = await CheckList.aggregate([
+      {
+        $lookup: {
+          from: User.collection.name,
+          localField: 'AMName',
+          foreignField: '_id',
+          as: 'areaManager',
+        },
+      },
+      { $unwind: '$areaManager' },
+      {
+        $lookup: {
+          from: User.collection.name,
+          localField: 'RMName',
+          foreignField: '_id',
+          as: 'regionalManager',
+        },
+      },
+      { $unwind: '$regionalManager' },
+      { $match: matchQuery.length > 0 ? { $and: matchQuery } : {} },
+      { $sort: sortBy },
+      { $limit: +pageSize + offset },
+      { $skip: offset },
+      {
+        $project: {
+          _id: '$_id',
+          key: '$_id',
+          areaManagerId: '$areaManager._id',
+          areaManagerName: '$areaManager.name',
+          areaManagerBadgeNumber: '$areaManager.badgeNumber',
+          regionalManagerId: '$regionalManager._id',
+          regionalManagerName: '$regionalManager.name',
+          regionalManagerBadgeNumber: '$regionalManager.badgeNumber',
+          date: '$date',
+          stationName: '$stationName',
+          region: '$region',
+          question1: '$question1',
+          question2: '$question2',
+          question3: '$question3',
+          question4: '$question4',
+          question5: '$question5',
+          question6: '$question6',
+          question7: '$question7',
+          question8: '$question8',
+          question9: '$question9',
+          question10: '$question10',
+          question11: '$question11',
+          question12: '$question12',
+          question13: '$question13',
+          question14: '$question14',
+          question15: '$question15',
+          question16: '$question16',
+          question17: '$question17',
+          question18: '$question18',
+          question19: '$question19',
+          question20: '$question20',
+          question21: '$question21',
+          question22: '$question22',
+          question23: '$question23',
+          question24: '$question24',
+          question25: '$question25',
+          question26: '$question26',
+          question27: '$question27',
+          question28: '$question28',
+          question29: '$question29',
+          question30: '$question30',
+          question31: '$question31',
+          question32: '$question32',
+          createdAt: '$createdAt',
+          updatedAt: '$updatedAt',
+        },
+      },
+    ]);
+
+    if (!checklist) return res.status(400).json({ success: false, message: 'No report found' });
+
+    // Get reports count
+    const checklistCount = await CheckList.aggregate([
+      {
+        $lookup: {
+          from: User.collection.name,
+          localField: 'AMName',
+          foreignField: '_id',
+          as: 'areaManager',
+        },
+      },
+      { $unwind: '$areaManager' },
+      {
+        $lookup: {
+          from: User.collection.name,
+          localField: 'RMName',
+          foreignField: '_id',
+          as: 'regionalManager',
+        },
+      },
+      { $match: matchQuery.length > 0 ? { $and: matchQuery } : {} },
+      {
+        $group: {
+          _id: 0,
+          count: { $sum: 1 },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          count: '$count',
+        },
+      },
+    ]);
+
+    if (!checklistCount)
+      return res.status(400).json({ success: false, message: 'Unable to calculate report count' });
+
+    return res.status(200).json({
+      success: true,
+      reports: checklist,
+      totalReports: checklistCount.length < 1 ? 0 : checklistCount[0].count,
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(400).json({
+      success: false,
+      message: 'Unable to fetch reports, reload',
+      error,
     });
   }
 });
