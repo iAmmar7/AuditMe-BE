@@ -1768,6 +1768,36 @@ router.post('/checklist-reports', async (req, res) => {
   }
 });
 
+// @route   DELETE /api/user/delete-checklist
+// @desc    Delete raised checklist
+// @access  Private
+router.delete('/delete-checklist/:id', async (req, res) => {
+  try {
+    if (!req.user.isAdmin) throw 'You are not authorized';
+
+    const report = await CheckList.findOne({ _id: req.params.id });
+
+    if (!report) throw 'Unable to find report';
+
+    Object.keys(report)
+      .filter((key) => key.includes('question'))
+      .map((item) => {
+        for (let url of item.images) {
+          fs.unlinkSync(`./public${url}`);
+        }
+      });
+
+    const deleteChecklist = await CheckList.findOneAndRemove({ _id: req.params.id });
+
+    if (!deleteChecklist) throw 'Unable to delete checlist';
+
+    return res.status(200).json({ success: true, message: 'Deleted successfully' });
+  } catch (error) {
+    console.log(error)
+    return res.status(400).json({ success: false, message: error });
+  }
+});
+
 // @route   GET /api/user/regional-managers
 // @desc    Get the list regional managers name
 // @access  Private
