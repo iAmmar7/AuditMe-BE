@@ -154,7 +154,98 @@ router.post('/checklist', async (req, res) => {
       if (images) {
         Object.keys(images).forEach((image) => {
           images[image].forEach((path) => {
-            fs.unlinkSync(path);
+            fs.unlinkSync(`./public${path}`);
+          });
+        });
+      }
+
+      // Throw validation error if any
+      if (error && error.name === 'ValidationError') {
+        return res.status(400).json({ success: false, message: 'Input fields validation error' });
+      }
+      return res.status(400).json({ success: false, message: error });
+    }
+  });
+});
+
+// @route   POST /api/am/update-checklist/:id
+// @desc    Update checklist report
+// @access  Private
+router.post('/update-checklist/:id', async (req, res) => {
+  const formData = formidable({
+    uploadDir: './public/checklist',
+    keepExtensions: true,
+    multiples: true,
+  });
+
+  if (!req.params.id) return;
+
+  const report = await CheckList.findOne({ _id: req.params.id });
+
+  if (!report) return res.status(400).json({ success: false, message: 'Unable to update report' });
+
+  formData.parse(req, async (error, fields, files) => {
+    const { date, stationName, region, RMName, ...questions } = fields;
+
+    let images = {};
+    try {
+      if (error) throw 'Image upload error';
+
+      // Extract files path from files object
+      if (files) {
+        Object.keys(files).forEach((key) => {
+          if (Array.isArray(files[key])) {
+            Object.keys(files[key]).forEach((image) => {
+              const path = files[key][image].path.split('public')[1];
+              images = { ...images, [key]: images[key] ? [...images[key], path] : [path] };
+            });
+          } else {
+            const path = files[key].path.split('public')[1];
+            images = { ...images, [key]: images[key] ? [...images[key], path] : [path] };
+          }
+        });
+      }
+
+      // Check image size and reduce if greater than 1mb
+      Object.keys(images).forEach((image) => {
+        images[image].forEach((path) => {
+          compressImage(`./public/${path}`);
+        });
+      });
+
+      // Create questions object for DB
+      let questionsData = {};
+      Object.keys(questions).forEach((key) => {
+        questionsData[key] = {
+          answer: questions[key],
+          images: images[key] ? [...report[key].images, ...images[key]] : report[key].images,
+        };
+      });
+
+      // Update db
+      const updateReport = await CheckList.findOneAndUpdate(
+        { _id: req.params.id },
+        {
+          date,
+          stationName,
+          region,
+          RMName,
+          AMName: req.user.id,
+          ...questionsData,
+        },
+        { new: true },
+      );
+
+      if (!updateReport) throw 'Unable to update the report';
+
+      return res.status(200).json({ success: true, report: updateReport });
+    } catch (error) {
+      console.log(error);
+      // Delete all images from server
+      if (images) {
+        Object.keys(images).forEach((image) => {
+          images[image].forEach((path) => {
+            fs.unlinkSync(`./public${path}`);
           });
         });
       }
