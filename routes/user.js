@@ -1659,6 +1659,20 @@ router.post('/checklist-reports', async (req, res) => {
         },
       },
       { $unwind: '$regionalManager' },
+      {
+        $lookup: {
+          from: User.collection.name,
+          localField: 'review.reviewerId',
+          foreignField: '_id',
+          as: 'reviewer',
+        },
+      },
+      {
+        $unwind: {
+          path: '$reviewer',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
       { $match: matchQuery.length > 0 ? { $and: matchQuery } : {} },
       { $sort: sortBy },
       { $limit: +pageSize + offset },
@@ -1676,6 +1690,10 @@ router.post('/checklist-reports', async (req, res) => {
           date: '$date',
           stationName: '$stationName',
           region: '$region',
+          review: { $ifNull: ['$review', null] },
+          reviewerId: { $ifNull: ['$reviewer._id', null] },
+          reviewerName: { $ifNull: ['$reviewer.name', null] },
+          reviewerBadgeNumber: { $ifNull: ['$reviewer.badgeNumber', null] },
           question1: '$question1',
           question2: '$question2',
           question3: '$question3',
@@ -1793,7 +1811,7 @@ router.delete('/delete-checklist/:id', async (req, res) => {
 
     return res.status(200).json({ success: true, message: 'Deleted successfully' });
   } catch (error) {
-    console.log(error)
+    console.log(error);
     return res.status(400).json({ success: false, message: error });
   }
 });

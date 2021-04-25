@@ -522,6 +522,23 @@ const CheckListSchema = new Schema(
         },
       ],
     },
+    review: {
+      reviewerId: {
+        type: mongoose.SchemaTypes.ObjectId,
+        ref: 'user',
+      },
+      comment: {
+        type: String,
+      },
+      images: [
+        {
+          type: String,
+        },
+      ],
+      updateTime: {
+        type: Date,
+      },
+    },
   },
   {
     timestamps: true,

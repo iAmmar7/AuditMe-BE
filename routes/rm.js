@@ -96,4 +96,77 @@ router.post('/update-issue/:id', async (req, res) => {
   });
 });
 
+// @route   POST /api/rm/checklist/add-review/:id
+// @desc    Add a review to a checklist
+// @access  Private
+router.post('/checklist/add-review/:id', async (req, res) => {
+  const formData = formidable({
+    uploadDir: './public/checklist',
+    keepExtensions: true,
+    multiples: true,
+  });
+
+  if (!req.params.id) return;
+
+  const report = await CheckList.findOne({ _id: req.params.id });
+
+  if (!report) return res.status(400).json({ success: false, message: 'Unable to update report' });
+
+  formData.parse(req, async (error, fields, files) => {
+    const { images } = files;
+    const { comment } = fields;
+    try {
+      if (error) throw 'Unable to upload image!';
+
+      let arrayOfImages = [];
+
+      if (images) {
+        Object.keys(images).forEach((value) => {
+          if (images[value] && images[value].path) {
+            const path = images[value].path.split('public')[1];
+            arrayOfImages.push(path);
+          }
+          if (value === 'path') {
+            const path = images[value].split('public')[1];
+            arrayOfImages.filter((item) => {
+              if (item !== path) arrayOfImages.push(path);
+            });
+          }
+        });
+      }
+
+      // Check image size and reduce if greater than 1mb
+      arrayOfImages.forEach(async (element) => {
+        compressImage(`./public/${element}`);
+      });
+
+      // Update db
+      const updateReport = await CheckList.findOneAndUpdate(
+        { _id: req.params.id },
+        {
+          review: {
+            reviewerId: req.user.id,
+            comment,
+            images: arrayOfImages,
+            updateTime: new Date(),
+          },
+        },
+        { new: true },
+      );
+
+      if (!updateReport) throw 'Unable to update the checklist';
+
+      return res.status(200).json({ success: true, report: updateReport });
+    } catch (error) {
+      console.log(error);
+      if (images) fs.unlinkSync(images.path);
+      if (error && error.name === 'ValidationError') {
+        return res.status(400).json({ success: false, message: 'Input fields validation error' });
+      }
+
+      return res.status(400).json({ success: false, message: error });
+    }
+  });
+});
+
 module.exports = router;
