@@ -219,6 +219,7 @@ router.post('/update-checklist/:id', async (req, res) => {
         questionsData[key] = {
           answer: questions[key],
           images: images[key] ? [...report[key].images, ...images[key]] : report[key].images,
+          text: report[key].text,
         };
       });
 
