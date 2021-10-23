@@ -1,5 +1,5 @@
 # Petromin Server
-This application is for one of the **auditor firm**s based in **KSA**, which helps them to **automate** their daily routine tasks. It also allows the admin to see the progress of each team working inside the firm.
+This application is for one of the **audit firm**s based in **KSA**, which helps them to **automate** their daily routine tasks. It also allows the admin to see the progress of each team working inside the firm.
 
 This repo only contains the server code. To read the client's code, please see [here](https://github.com/iAmmar7/Petromin-FE).
 
