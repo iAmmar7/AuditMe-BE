@@ -27,3 +27,4 @@ Application is deployed on **Digital Ocean**'s [machine](https://157.245.20.65:4
 - Node <img alt="Nodejs" src="https://img.shields.io/badge/-Nodejs-43853d?style=flat-square&logo=Node.js&logoColor=white" />
 - Express <img alt="Express" src="https://img.shields.io/badge/-Express-000000?style=flat-square&logo=express&logoColor=white" />
 - MongoDB <img alt="MongoDB" src="https://img.shields.io/badge/-MongoDB-13aa52?style=flat-square&logo=mongodb&logoColor=white" />
+- Digital Ocean <img alt="DigitalOcean" src="https://img.shields.io/badge/-DigitalOcean-0068FD?style=flat-square&logo=digitalocean&logoColor=white" />
