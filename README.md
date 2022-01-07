@@ -1,9 +1,9 @@
 # Petromin Server
 This application is for one of the **audit firm**s based in **KSA**, which helps them to **automate** their daily routine tasks. It also allows the admin to see the progress of each team working inside the firm.
 
-This repo only contains the server code. To read the client's code, please see [here](https://github.com/iAmmar7/Petromin-FE).
+> This repo only contains the server code. To read the client's code, please see [here](https://github.com/iAmmar7/Petromin-FE).
 
-Application is deployed on **Digital Ocean**'s [machine](https://157.245.20.65:4000).
+Application is deployed on **Digital Ocean**'s [machine](https://157.245.20.65:4000) :fire:
 
 ## Features
 - Five types of users; auditor, regional managers, area managers, moderators and an admin.
@@ -21,10 +21,10 @@ Application is deployed on **Digital Ocean**'s [machine](https://157.245.20.65:4
 - Monitor all users' recent activity as an admin.
 
 ## Technologies
-- React <img alt="React" src="https://img.shields.io/badge/-React-45b8d8?style=flat-square&logo=react&logoColor=white" />
-- Ant Design Pro <img alt="Antd" src="https://img.shields.io/badge/-Ant%20Design-0170FE?style=flat-square&logo=antdesign&logoColor=white" />
+- React <img align="center" alt="React" src="https://img.shields.io/badge/-React-45b8d8?style=flat-square&logo=react&logoColor=white" />
+- Ant Design Pro <img align="center" alt="Antd" src="https://img.shields.io/badge/-Ant%20Design-0170FE?style=flat-square&logo=antdesign&logoColor=white" />
 - UmiJS
-- Node <img alt="Nodejs" src="https://img.shields.io/badge/-Nodejs-43853d?style=flat-square&logo=Node.js&logoColor=white" />
-- Express <img alt="Express" src="https://img.shields.io/badge/-Express-000000?style=flat-square&logo=express&logoColor=white" />
-- MongoDB <img alt="MongoDB" src="https://img.shields.io/badge/-MongoDB-13aa52?style=flat-square&logo=mongodb&logoColor=white" />
-- Digital Ocean <img alt="DigitalOcean" src="https://img.shields.io/badge/-DigitalOcean-0068FD?style=flat-square&logo=digitalocean&logoColor=white" />
+- Node <img align="center" alt="Nodejs" src="https://img.shields.io/badge/-Nodejs-43853d?style=flat-square&logo=Node.js&logoColor=white" />
+- Express <img align="center" alt="Express" src="https://img.shields.io/badge/-Express-000000?style=flat-square&logo=express&logoColor=white" />
+- MongoDB <img align="center" alt="MongoDB" src="https://img.shields.io/badge/-MongoDB-13aa52?style=flat-square&logo=mongodb&logoColor=white" />
+- Digital Ocean <img align="center" alt="DigitalOcean" src="https://img.shields.io/badge/-DigitalOcean-0068FD?style=flat-square&logo=digitalocean&logoColor=white" />
