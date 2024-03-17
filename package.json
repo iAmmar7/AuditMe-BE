@@ -1,12 +1,13 @@
 {
-  "name": "auditme-be",
+  "name": "firmfigure-be",
   "version": "1.0.0",
   "description": "Audit report submission and review (backend)",
+  "author": "Ammar Ansari",
   "main": "server.js",
   "scripts": {
-    "start": "nodemon server.js"
+    "start": "npm server.js",
+    "dev": "nodemon server.js"
   },
-  "author": "iammar7",
   "license": "ISC",
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -21,5 +22,8 @@
     "node-cron": "^2.0.3",
     "passport": "^0.4.1",
     "passport-jwt": "^4.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
   }
 }
