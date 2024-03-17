@@ -1,5 +1,5 @@
 {
-  "name": "firmfigure-be",
+  "name": "firmfigure-server",
   "version": "1.0.0",
   "description": "Audit report submission and review (backend)",
   "author": "Ammar Ansari",
