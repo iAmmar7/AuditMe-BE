@@ -7,7 +7,7 @@ const UserSchema = new Schema(
       type: String,
       required: true,
     },
-    badgeNumber: {
+    email: {
       type: String,
       required: true,
     },
@@ -18,7 +18,7 @@ const UserSchema = new Schema(
     role: {
       type: String,
       required: true,
-      enum: ['auditor', 'rm', 'viewer', 'am', 'sm'],
+      enum: ['auditor', 'rm', 'viewer', 'am', 'sm', 'admin'],
     },
     isAdmin: {
       type: Boolean,

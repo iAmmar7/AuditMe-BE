@@ -7,11 +7,14 @@ const passport = require('passport');
 // Load Models
 const Admin = require('../db/models/Admin');
 const User = require('../db/models/User');
+const { validateSignupRequest } = require('../middlewares');
 
 // @route   GET /api/auth/Test
 // @desc    Test route
 // @access  Public
-router.get('/test', async (req, res) => res.status(200).json({ message: 'Test route working' }));
+router.get('/test', async (req, res) =>
+  res.status(200).json({ message: 'Test route working' }),
+);
 
 // @route   GET /api/auth/admin/signup
 // @desc    Admin Signup
@@ -31,7 +34,9 @@ router.post('/admin/signup', async (req, res) => {
   const admin = await Admin.findOne({ email });
 
   if (admin) {
-    return res.status(400).json({ success: false, message: 'Email already exist' });
+    return res
+      .status(400)
+      .json({ success: false, message: 'Email already exist' });
   } else {
     const newAdmin = new Admin({ name, email, password });
 
@@ -71,15 +76,22 @@ router.post('/admin/login', async (req, res) => {
       };
 
       // Sign Token
-      jwt.sign(payload, process.env.PASSPORT_SECRET, { expiresIn: '7d' }, (err, token) => {
-        res.json({
-          success: true,
-          token: 'Bearer ' + token,
-          user: payload,
-        });
-      });
+      jwt.sign(
+        payload,
+        process.env.PASSPORT_SECRET,
+        { expiresIn: '7d' },
+        (err, token) => {
+          res.json({
+            success: true,
+            token: 'Bearer ' + token,
+            user: payload,
+          });
+        },
+      );
     } else {
-      return res.status(400).json({ success: false, message: 'Password Incorrect' });
+      return res
+        .status(400)
+        .json({ success: false, message: 'Password Incorrect' });
     }
   });
 });
@@ -87,45 +99,40 @@ router.post('/admin/login', async (req, res) => {
 // @route   GET /api/auth/user/signup
 // @desc    user Signup
 // @access  Public
-router.post('/user/signup', async (req, res) => {
-  const { name, badgeNumber, password, role } = req.body;
+router.post('/user/signup', validateSignupRequest, async (req, res) => {
+  const { name, email, password, role } = req.body;
 
-  const admin = await Admin.findOne({ badgeNumber });
-
-  if (admin) {
+  const user = await User.findOne({ email });
+  if (user) {
     return res.status(400).json({
       success: false,
-      message: 'You cannot make account with this Badge Number',
+      errors: [
+        {
+          location: 'body',
+          msg: 'Account already exist with this email',
+          path: 'email',
+          type: 'field',
+          value: email,
+        },
+      ],
     });
-  }
-
-  const user = await User.findOne({ badgeNumber });
-
-  if (user) {
-    return res
-      .status(400)
-      .json({ success: false, message: 'Account already exist with this Badge Number' });
   } else {
-    const newUser = await User.create({ name, badgeNumber, password, role });
+    const newUser = new User({ name, email, password, role });
 
-    if (!newUser) return res.status(400).json({ success: false, message: 'Unable to signup' });
-
-    newUser.password = null;
-
-    return res.status(200).json({ success: true, user: newUser });
-
-    // const newUser = new User({ name, badgeNumber, password, role });
-
-    // bcrypt.genSalt(10, (err, salt) => {
-    //   bcrypt.hash(newUser.password, salt, (err, hash) => {
-    //     if (err) throw err;
-    //     newUser.password = hash;
-    //     newUser
-    //       .save()
-    //       .then((user) => res.status(200).json({ success: true, user }))
-    //       .catch((err) => res.status(400).json({ success: false, message: 'Unable to signup' }));
-    //   });
-    // });
+    bcrypt.genSalt(10, (err, salt) => {
+      bcrypt.hash(newUser.password, salt, (err, hash) => {
+        if (err) throw err;
+        newUser.password = hash;
+        newUser
+          .save()
+          .then((user) => res.status(200).json({ success: true, user }))
+          .catch((err) =>
+            res
+              .status(500)
+              .json({ success: false, message: 'Unable to signup' }),
+          );
+      });
+    });
   }
 });
 
@@ -133,53 +140,64 @@ router.post('/user/signup', async (req, res) => {
 // @desc    User Login
 // @access  Public
 router.post('/user/login', async (req, res) => {
-  const { badgeNumber, password } = req.body;
+  const { email, password } = req.body;
 
-  const user = await User.findOne({ badgeNumber, password });
+  const user = await User.findOne({ email });
 
   if (!user) {
-    return res.status(404).json({ success: false, message: 'Incorrect credentials' });
+    return res.status(404).json({
+      success: false,
+      errors: [
+        {
+          location: 'body',
+          msg: 'Email not found',
+          path: 'email',
+          type: 'field',
+          value: email,
+        },
+      ],
+    });
   }
 
-  const payload = {
-    id: user._id,
-    name: user.name,
-    badgeNumber: user.badgeNumber,
-    role: user.role,
-    isAdmin: user.isAdmin,
-  };
-
-  jwt.sign(payload, process.env.PASSPORT_SECRET, { expiresIn: '7d' }, (err, token) => {
-    res.json({
-      success: true,
-      token: 'Bearer ' + token,
-      user: payload,
-    });
-  });
-
   // Check for Password
-  // bcrypt.compare(password, user.password).then((isMatch) => {
-  //   if (isMatch) {
-  //     const payload = {
-  //       id: user._id,
-  //       name: user.name,
-  //       badgeNumber: user.badgeNumber,
-  //       role: user.role,
-  //       isAdmin: user.isAdmin,
-  //     };
+  bcrypt.compare(password, user.password).then((isMatch) => {
+    if (isMatch) {
+      const payload = {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        isAdmin: user.isAdmin,
+      };
 
-  //     // Sign Token
-  //     jwt.sign(payload, process.env.PASSPORT_SECRET, { expiresIn: '7d' }, (err, token) => {
-  //       res.json({
-  //         success: true,
-  //         token: 'Bearer ' + token,
-  //         user: payload,
-  //       });
-  //     });
-  //   } else {
-  //     return res.status(400).json({ success: false, message: 'Password Incorrect' });
-  //   }
-  // });
+      // Sign Token
+      jwt.sign(
+        payload,
+        process.env.PASSPORT_SECRET,
+        { expiresIn: '7d' },
+        (err, token) => {
+          res.json({
+            success: true,
+            token: 'Bearer ' + token,
+            user: payload,
+          });
+        },
+      );
+    } else {
+      return res.status(401).json({
+        success: false,
+        errors: [
+          {
+            location: 'body',
+            msg: 'Incorrect password',
+            path: 'password',
+            type: 'field',
+            value: password,
+          },
+        ],
+      });
+    }
+  });
 });
 
 module.exports = router;
