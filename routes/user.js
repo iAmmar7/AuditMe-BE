@@ -23,7 +23,9 @@ router.post('/audit-report', async (req, res) => {
 
     res.status(200).json({ success: true, report: newReport });
   } catch (error) {
-    return res.status(400).json({ success: false, message: 'Some fields are missing', error });
+    return res
+      .status(400)
+      .json({ success: false, message: 'Some fields are missing', error });
   }
 });
 
@@ -90,7 +92,9 @@ router.post('/priorities-report', async (req, res) => {
       if (evidencesBefore) fs.unlinkSync(evidencesBefore.path);
       if (evidencesAfter) fs.unlinkSync(evidencesAfter.path);
       if (error && error.name === 'ValidationError') {
-        return res.status(400).json({ success: false, message: 'Input fields validation error' });
+        return res
+          .status(400)
+          .json({ success: false, message: 'Input fields validation error' });
       }
 
       return res.status(400).json({ success: false, message: error });
@@ -114,7 +118,10 @@ router.post('/priority-report/:id', async (req, res) => {
 
   const report = await PrioritiesReport.findOne({ _id: req.params.id });
 
-  if (!report) return res.status(400).json({ success: false, message: 'Unable to update report' });
+  if (!report)
+    return res
+      .status(400)
+      .json({ success: false, message: 'Unable to update report' });
 
   formData.parse(req, async (error, fields, files) => {
     const { evidencesBefore, evidencesAfter } = files;
@@ -157,8 +164,14 @@ router.post('/priority-report/:id', async (req, res) => {
       console.log(arrayOfEvidencesBeforeFiles);
       console.log(arrayOfEvidencesAfterFiles);
 
-      let updatedEvidencesBefore = [...report.evidencesBefore, ...arrayOfEvidencesBeforeFiles];
-      let updatedEvidencesAfter = [...report.evidencesAfter, ...arrayOfEvidencesAfterFiles];
+      let updatedEvidencesBefore = [
+        ...report.evidencesBefore,
+        ...arrayOfEvidencesBeforeFiles,
+      ];
+      let updatedEvidencesAfter = [
+        ...report.evidencesAfter,
+        ...arrayOfEvidencesAfterFiles,
+      ];
 
       // Update db
       const updateReport = await PrioritiesReport.findOneAndUpdate(
@@ -185,7 +198,9 @@ router.post('/priority-report/:id', async (req, res) => {
       if (evidencesBefore) fs.unlinkSync(evidencesBefore.path);
       if (evidencesAfter) fs.unlinkSync(evidencesAfter.path);
       if (error && error.name === 'ValidationError') {
-        return res.status(400).json({ success: false, message: 'Input fields validation error' });
+        return res
+          .status(400)
+          .json({ success: false, message: 'Input fields validation error' });
       }
 
       return res.status(400).json({ success: false, message: error });
@@ -239,16 +254,30 @@ router.post('/priorities-reports', async (req, res) => {
     if (type) matchQuery.push({ type: { $regex: type, $options: 'i' } });
     if (region) matchQuery.push({ region: { $regex: region, $options: 'i' } });
     if (processSpecialist)
-      matchQuery.push({ processSpecialist: { $regex: processSpecialist, $options: 'i' } });
+      matchQuery.push({
+        processSpecialist: { $regex: processSpecialist, $options: 'i' },
+      });
     if (regionalManager)
-      matchQuery.push({ regionalManager: { $regex: regionalManager, $options: 'i' } });
-    if (areaManager) matchQuery.push({ areaManager: { $regex: areaManager, $options: 'i' } });
-    if (stationNumber) matchQuery.push({ stationNumber: { $regex: stationNumber, $options: 'i' } });
+      matchQuery.push({
+        regionalManager: { $regex: regionalManager, $options: 'i' },
+      });
+    if (areaManager)
+      matchQuery.push({ areaManager: { $regex: areaManager, $options: 'i' } });
+    if (stationNumber)
+      matchQuery.push({
+        stationNumber: { $regex: stationNumber, $options: 'i' },
+      });
     if (dateIdentified)
       matchQuery.push({
         dateIdentified: {
-          $gte: moment(new Date(dateIdentified[0])).utcOffset(0).startOf('day').toDate(),
-          $lte: moment(new Date(dateIdentified[1])).utcOffset(0).endOf('day').toDate(),
+          $gte: moment(new Date(dateIdentified[0]))
+            .utcOffset(0)
+            .startOf('day')
+            .toDate(),
+          $lte: moment(new Date(dateIdentified[1]))
+            .utcOffset(0)
+            .endOf('day')
+            .toDate(),
         },
       });
 
@@ -256,8 +285,10 @@ router.post('/priorities-reports', async (req, res) => {
     let sortBy = { 'root.createdAt': -1 };
     if (dateSorter === 'ascend') sortBy = { 'root.date': +1 };
     if (dateSorter === 'descend') sortBy = { 'root.date': -1 };
-    if (dateIdentifiedSorter === 'ascend') sortBy = { 'root.dateIdentified': +1 };
-    if (dateIdentifiedSorter === 'descend') sortBy = { 'root.dateIdentified': -1 };
+    if (dateIdentifiedSorter === 'ascend')
+      sortBy = { 'root.dateIdentified': +1 };
+    if (dateIdentifiedSorter === 'descend')
+      sortBy = { 'root.dateIdentified': -1 };
     if (daysOpenSorter === 'ascend') sortBy = { daysOpen: +1 };
     if (daysOpenSorter === 'descend') sortBy = { daysOpen: -1 };
 
@@ -299,7 +330,12 @@ router.post('/priorities-reports', async (req, res) => {
           daysOpen: {
             $trunc: {
               $divide: [
-                { $subtract: [{ $ifNull: ['$dateOfClosure', new Date()] }, '$dateIdentified'] },
+                {
+                  $subtract: [
+                    { $ifNull: ['$dateOfClosure', new Date()] },
+                    '$dateIdentified',
+                  ],
+                },
                 1000 * 60 * 60 * 24,
               ],
             },
@@ -359,7 +395,10 @@ router.post('/priorities-reports', async (req, res) => {
       },
     ]);
 
-    if (!reports) return res.status(400).json({ success: false, message: 'No report found' });
+    if (!reports)
+      return res
+        .status(400)
+        .json({ success: false, message: 'No report found' });
 
     // Get reports count
     const reportsCount = await PrioritiesReport.aggregate([
@@ -395,7 +434,9 @@ router.post('/priorities-reports', async (req, res) => {
     ]);
 
     if (!reportsCount)
-      return res.status(400).json({ success: false, message: 'Unable to calculate report count' });
+      return res
+        .status(400)
+        .json({ success: false, message: 'Unable to calculate report count' });
 
     return res.status(200).json({
       success: true,
@@ -445,16 +486,30 @@ router.post('/csv/priorities-reports', async (req, res) => {
   if (type) matchQuery.push({ type: { $regex: type, $options: 'i' } });
   if (region) matchQuery.push({ region: { $regex: region, $options: 'i' } });
   if (processSpecialist)
-    matchQuery.push({ processSpecialist: { $regex: processSpecialist, $options: 'i' } });
+    matchQuery.push({
+      processSpecialist: { $regex: processSpecialist, $options: 'i' },
+    });
   if (regionalManager)
-    matchQuery.push({ regionalManager: { $regex: regionalManager, $options: 'i' } });
-  if (areaManager) matchQuery.push({ areaManager: { $regex: areaManager, $options: 'i' } });
-  if (stationNumber) matchQuery.push({ stationNumber: { $regex: stationNumber, $options: 'i' } });
+    matchQuery.push({
+      regionalManager: { $regex: regionalManager, $options: 'i' },
+    });
+  if (areaManager)
+    matchQuery.push({ areaManager: { $regex: areaManager, $options: 'i' } });
+  if (stationNumber)
+    matchQuery.push({
+      stationNumber: { $regex: stationNumber, $options: 'i' },
+    });
   if (dateIdentified)
     matchQuery.push({
       dateIdentified: {
-        $gte: moment(new Date(dateIdentified[0])).utcOffset(0).startOf('day').toDate(),
-        $lte: moment(new Date(dateIdentified[1])).utcOffset(0).endOf('day').toDate(),
+        $gte: moment(new Date(dateIdentified[0]))
+          .utcOffset(0)
+          .startOf('day')
+          .toDate(),
+        $lte: moment(new Date(dateIdentified[1]))
+          .utcOffset(0)
+          .endOf('day')
+          .toDate(),
       },
     });
 
@@ -483,7 +538,12 @@ router.post('/csv/priorities-reports', async (req, res) => {
           daysOpen: {
             $trunc: {
               $divide: [
-                { $subtract: [{ $ifNull: ['$dateOfClosure', new Date()] }, '$dateIdentified'] },
+                {
+                  $subtract: [
+                    { $ifNull: ['$dateOfClosure', new Date()] },
+                    '$dateIdentified',
+                  ],
+                },
                 1000 * 60 * 60 * 24,
               ],
             },
@@ -529,7 +589,10 @@ router.post('/csv/priorities-reports', async (req, res) => {
       },
     ]);
 
-    if (!reports) return res.status(400).json({ success: false, message: 'No report found' });
+    if (!reports)
+      return res
+        .status(400)
+        .json({ success: false, message: 'No report found' });
 
     const modifiedReport = [];
     for (let i in reports) {
@@ -544,13 +607,17 @@ router.post('/csv/priorities-reports', async (req, res) => {
         regionalManager: reports[i].regionalManager,
         areaManager: reports[i].areaManager,
         issueDetails:
-          reports[i].issueDetails && reports[i].issueDetails.trim().replace(/["]+/g, ''),
+          reports[i].issueDetails &&
+          reports[i].issueDetails.trim().replace(/["]+/g, ''),
         dateIdentified: moment(reports[i].dateIdentified).format('DD-MMM-YY'),
         stationNumber: reports[i].stationNumber,
         logNumber: reports[i].logNumber,
         daysOpen: reports[i].status === 'Resolved' ? '-' : reports[i].daysOpen,
-        daysResolved: reports[i].status === 'Resolved' ? reports[i].daysOpen : '-',
-        resolvedByName: reports[i].resolvedByName ? reports[i].resolvedByName : '-',
+        daysResolved:
+          reports[i].status === 'Resolved' ? reports[i].daysOpen : '-',
+        resolvedByName: reports[i].resolvedByName
+          ? reports[i].resolvedByName
+          : '-',
         dateOfClosure: reports[i].dateOfClosure
           ? moment(reports[i].dateOfClosure).format('DD-MMM-YY')
           : '-',
@@ -615,16 +682,30 @@ router.post('/initiatives-reports', async (req, res) => {
     if (type) matchQuery.push({ type: { $regex: type, $options: 'i' } });
     if (region) matchQuery.push({ region: { $regex: region, $options: 'i' } });
     if (processSpecialist)
-      matchQuery.push({ processSpecialist: { $regex: processSpecialist, $options: 'i' } });
+      matchQuery.push({
+        processSpecialist: { $regex: processSpecialist, $options: 'i' },
+      });
     if (regionalManager)
-      matchQuery.push({ regionalManager: { $regex: regionalManager, $options: 'i' } });
-    if (areaManager) matchQuery.push({ areaManager: { $regex: areaManager, $options: 'i' } });
-    if (stationNumber) matchQuery.push({ stationNumber: { $regex: stationNumber, $options: 'i' } });
+      matchQuery.push({
+        regionalManager: { $regex: regionalManager, $options: 'i' },
+      });
+    if (areaManager)
+      matchQuery.push({ areaManager: { $regex: areaManager, $options: 'i' } });
+    if (stationNumber)
+      matchQuery.push({
+        stationNumber: { $regex: stationNumber, $options: 'i' },
+      });
     if (dateIdentified)
       matchQuery.push({
         dateIdentified: {
-          $gte: moment(new Date(dateIdentified[0])).utcOffset(0).startOf('day').toDate(),
-          $lte: moment(new Date(dateIdentified[1])).utcOffset(0).endOf('day').toDate(),
+          $gte: moment(new Date(dateIdentified[0]))
+            .utcOffset(0)
+            .startOf('day')
+            .toDate(),
+          $lte: moment(new Date(dateIdentified[1]))
+            .utcOffset(0)
+            .endOf('day')
+            .toDate(),
         },
       });
 
@@ -632,8 +713,10 @@ router.post('/initiatives-reports', async (req, res) => {
     let sortBy = { 'root.createdAt': -1 };
     if (dateSorter === 'ascend') sortBy = { 'root.date': +1 };
     if (dateSorter === 'descend') sortBy = { 'root.date': -1 };
-    if (dateIdentifiedSorter === 'ascend') sortBy = { 'root.dateIdentified': +1 };
-    if (dateIdentifiedSorter === 'descend') sortBy = { 'root.dateIdentified': -1 };
+    if (dateIdentifiedSorter === 'ascend')
+      sortBy = { 'root.dateIdentified': +1 };
+    if (dateIdentifiedSorter === 'descend')
+      sortBy = { 'root.dateIdentified': -1 };
     if (daysOpenSorter === 'ascend') sortBy = { daysOpen: +1 };
     if (daysOpenSorter === 'descend') sortBy = { daysOpen: -1 };
 
@@ -675,7 +758,12 @@ router.post('/initiatives-reports', async (req, res) => {
           daysOpen: {
             $trunc: {
               $divide: [
-                { $subtract: [{ $ifNull: ['$dateOfClosure', new Date()] }, '$dateIdentified'] },
+                {
+                  $subtract: [
+                    { $ifNull: ['$dateOfClosure', new Date()] },
+                    '$dateIdentified',
+                  ],
+                },
                 1000 * 60 * 60 * 24,
               ],
             },
@@ -710,7 +798,10 @@ router.post('/initiatives-reports', async (req, res) => {
       },
     ]);
 
-    if (!reports) return res.status(400).json({ success: false, message: 'No report found' });
+    if (!reports)
+      return res
+        .status(400)
+        .json({ success: false, message: 'No report found' });
 
     // Get reports count
     const reportsCount = await Initiatives.aggregate([
@@ -746,7 +837,9 @@ router.post('/initiatives-reports', async (req, res) => {
     ]);
 
     if (!reportsCount)
-      return res.status(400).json({ success: false, message: 'Unable to calculate report count' });
+      return res
+        .status(400)
+        .json({ success: false, message: 'Unable to calculate report count' });
 
     return res.status(200).json({
       success: true,
@@ -794,11 +887,19 @@ router.post('/csv/initiatives-reports', async (req, res) => {
   if (type) matchQuery.push({ type: { $regex: type, $options: 'i' } });
   if (region) matchQuery.push({ region: { $regex: region, $options: 'i' } });
   if (processSpecialist)
-    matchQuery.push({ processSpecialist: { $regex: processSpecialist, $options: 'i' } });
+    matchQuery.push({
+      processSpecialist: { $regex: processSpecialist, $options: 'i' },
+    });
   if (regionalManager)
-    matchQuery.push({ regionalManager: { $regex: regionalManager, $options: 'i' } });
-  if (areaManager) matchQuery.push({ areaManager: { $regex: areaManager, $options: 'i' } });
-  if (stationNumber) matchQuery.push({ stationNumber: { $regex: stationNumber, $options: 'i' } });
+    matchQuery.push({
+      regionalManager: { $regex: regionalManager, $options: 'i' },
+    });
+  if (areaManager)
+    matchQuery.push({ areaManager: { $regex: areaManager, $options: 'i' } });
+  if (stationNumber)
+    matchQuery.push({
+      stationNumber: { $regex: stationNumber, $options: 'i' },
+    });
 
   console.log('CSV', matchQuery);
 
@@ -840,7 +941,10 @@ router.post('/csv/initiatives-reports', async (req, res) => {
       },
     ]);
 
-    if (!reports) return res.status(400).json({ success: false, message: 'No report found' });
+    if (!reports)
+      return res
+        .status(400)
+        .json({ success: false, message: 'No report found' });
 
     const modifiedReport = [];
     for (let i in reports) {
@@ -853,7 +957,8 @@ router.post('/csv/initiatives-reports', async (req, res) => {
         region: reports[i].region,
         regionalManager: reports[i].regionalManager,
         areaManager: reports[i].areaManager,
-        details: reports[i].details && reports[i].details.trim().replace(/["]+/g, ''),
+        details:
+          reports[i].details && reports[i].details.trim().replace(/["]+/g, ''),
         dateIdentified: moment(reports[i].dateIdentified).format('DD-MMM-YY'),
         stationNumber: reports[i].stationNumber,
       });
@@ -1032,13 +1137,19 @@ router.post('/delete-image', async (req, res) => {
 
     let updateObj = {};
 
-    if (imageType === 'evidenceBefore') updateObj = { $pull: { evidencesBefore: url } };
-    if (imageType === 'evidenceAfter') updateObj = { $pull: { evidencesAfter: url } };
+    if (imageType === 'evidenceBefore')
+      updateObj = { $pull: { evidencesBefore: url } };
+    if (imageType === 'evidenceAfter')
+      updateObj = { $pull: { evidencesAfter: url } };
 
     if (requestType === 'issues') {
-      const updateIssue = await PrioritiesReport.findOneAndUpdate({ _id: id }, updateObj, {
-        new: true,
-      });
+      const updateIssue = await PrioritiesReport.findOneAndUpdate(
+        { _id: id },
+        updateObj,
+        {
+          new: true,
+        },
+      );
 
       if (!updateIssue) throw 'Unable to delete image';
 
@@ -1046,16 +1157,22 @@ router.post('/delete-image', async (req, res) => {
     }
 
     if (requestType === 'initiatives') {
-      const updateIssue = await Initiatives.findOneAndUpdate({ _id: id }, updateObj, {
-        new: true,
-      });
+      const updateIssue = await Initiatives.findOneAndUpdate(
+        { _id: id },
+        updateObj,
+        {
+          new: true,
+        },
+      );
 
       if (!updateIssue) throw 'Unable to delete image';
 
       fs.unlinkSync(`./public${url}`);
     }
 
-    return res.status(200).json({ success: true, message: 'Image deleted successfully' });
+    return res
+      .status(200)
+      .json({ success: true, message: 'Image deleted successfully' });
   } catch (error) {
     return res.status(400).json({ success: false, message: error });
   }
@@ -1084,11 +1201,15 @@ router.delete('/delete-issue/:id', async (req, res) => {
       }
     }
 
-    const deleteIssue = await PrioritiesReport.findOneAndRemove({ _id: req.params.id });
+    const deleteIssue = await PrioritiesReport.findOneAndRemove({
+      _id: req.params.id,
+    });
 
     if (!deleteIssue) throw 'Unable to delete issue';
 
-    return res.status(200).json({ success: true, message: 'Deleted successfully' });
+    return res
+      .status(200)
+      .json({ success: true, message: 'Deleted successfully' });
   } catch (error) {
     return res.status(400).json({ success: false, message: error });
   }
@@ -1117,11 +1238,15 @@ router.delete('/delete-initiative/:id', async (req, res) => {
       }
     }
 
-    const deleteIssue = await Initiatives.findOneAndRemove({ _id: req.params.id });
+    const deleteIssue = await Initiatives.findOneAndRemove({
+      _id: req.params.id,
+    });
 
     if (!deleteIssue) throw 'Unable to delete issue';
 
-    return res.status(200).json({ success: true, message: 'Deleted successfully' });
+    return res
+      .status(200)
+      .json({ success: true, message: 'Deleted successfully' });
   } catch (error) {
     return res.status(400).json({ success: false, message: error });
   }
@@ -1143,7 +1268,8 @@ router.post('/all-users', async (req, res) => {
   let matchQuery = [];
   let sorter = { createdAt: -1 };
 
-  if (badgeNumber) matchQuery.push({ badgeNumber: { $regex: badgeNumber, $options: 'i' } });
+  if (badgeNumber)
+    matchQuery.push({ badgeNumber: { $regex: badgeNumber, $options: 'i' } });
   if (name) matchQuery.push({ name: { $regex: name, $options: 'i' } });
   if (roleFilter) matchQuery.push({ role: { $in: roleFilter } });
 
@@ -1153,7 +1279,9 @@ router.post('/all-users', async (req, res) => {
   try {
     if (!req.user.isAdmin) throw 'Unauthorized';
 
-    const users = await User.find(matchQuery.length > 0 ? { $and: matchQuery } : {})
+    const users = await User.find(
+      matchQuery.length > 0 ? { $and: matchQuery } : {},
+    )
       .limit(pageSize)
       .skip(offset)
       .sort(sorter);
@@ -1176,21 +1304,33 @@ router.post('/all-users', async (req, res) => {
 router.post('/add-user', async (req, res) => {
   const { badgeNumber, name, password, userType } = req.body;
 
-  if (!req.user.isAdmin) return res.status(400).json({ success: false, message: 'Unauthorized' });
+  if (!req.user.isAdmin)
+    return res.status(400).json({ success: false, message: 'Unauthorized' });
 
   const user = await User.findOne({ badgeNumber });
 
   if (user)
     return res
       .status(400)
-      .json({ success: false, message: 'Account already exist with this Badge Number' });
+      .json({
+        success: false,
+        message: 'Account already exist with this Badge Number',
+      });
 
-  const newUser = await User.create({ name, badgeNumber, password, role: userType });
+  const newUser = await User.create({
+    name,
+    badgeNumber,
+    password,
+    role: userType,
+  });
 
   if (!newUser)
     return res
       .status(400)
-      .json({ success: false, message: 'Unable to add user, please try later' });
+      .json({
+        success: false,
+        message: 'Unable to add user, please try later',
+      });
 
   return res.status(200).json({ success: true, user: newUser });
 });
@@ -1239,9 +1379,15 @@ router.delete('/delete-user/:id', async (req, res) => {
 // @desc    POST update user activity
 // @access  Private
 router.post('/update-activity', async (req, res) => {
-  const user = await User.findOneAndUpdate({ _id: req.user.id }, { recentActivity: new Date() });
-
-  return res.json({ success: false, user });
+  try {
+    const user = await User.findOneAndUpdate(
+      { _id: req.user.id },
+      { recentActivity: new Date() },
+    );
+    return res.json({ success: true, user });
+  } catch (error) {
+    return res.json({ success: false, errors: error });
+  }
 });
 
 // @route   GET /api/user/image-resoze
