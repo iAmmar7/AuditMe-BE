@@ -33,6 +33,12 @@ router.post('/audit-report', async (req, res) => {
 // @desc    Submit priorities/issue report
 // @access  Private
 router.post('/priorities-report', async (req, res) => {
+  // Ensure the directory exists
+  const uploadDir = path.join('public', 'issues');
+  if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+  }
+
   const formData = formidable({
     uploadDir: './public/issues',
     keepExtensions: true,
@@ -106,6 +112,12 @@ router.post('/priorities-report', async (req, res) => {
 // @desc    Update priority/issue report
 // @access  Private
 router.post('/priority-report/:id', async (req, res) => {
+  // Ensure the directory exists
+  const uploadDir = path.join('public', 'issues');
+  if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+  }
+
   const formData = formidable({
     uploadDir: './public/issues',
     keepExtensions: true,
@@ -1310,12 +1322,10 @@ router.post('/add-user', async (req, res) => {
   const user = await User.findOne({ badgeNumber });
 
   if (user)
-    return res
-      .status(400)
-      .json({
-        success: false,
-        message: 'Account already exist with this Badge Number',
-      });
+    return res.status(400).json({
+      success: false,
+      message: 'Account already exist with this Badge Number',
+    });
 
   const newUser = await User.create({
     name,
@@ -1325,12 +1335,10 @@ router.post('/add-user', async (req, res) => {
   });
 
   if (!newUser)
-    return res
-      .status(400)
-      .json({
-        success: false,
-        message: 'Unable to add user, please try later',
-      });
+    return res.status(400).json({
+      success: false,
+      message: 'Unable to add user, please try later',
+    });
 
   return res.status(200).json({ success: true, user: newUser });
 });
@@ -1405,6 +1413,21 @@ router.get('/image-resize', async (req, res) => {
   });
 
   return res.json({ message: 'Image size decresing' });
+});
+
+// @route   GET /api/user/roles
+// @desc    List down all users by role
+// @access  Private
+router.get('/roles', async (req, res) => {
+  let { role } = req.query;
+
+  try {
+    const users = await User.find({ role });
+
+    return res.status(200).json({ success: true, users });
+  } catch (error) {
+    return res.status(400).json({ success: false, error: error });
+  }
 });
 
 module.exports = router;

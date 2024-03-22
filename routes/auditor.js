@@ -1,4 +1,5 @@
 const fs = require('fs');
+const path = require('path');
 const express = require('express');
 const moment = require('moment');
 const formidable = require('formidable');
@@ -22,6 +23,12 @@ router.get('/test', (req, res) => {
 // @desc    Submit priorities/issue report
 // @access  Private
 router.post('/raise-issue', async (req, res) => {
+  // Ensure the directory exists
+  const uploadDir = path.join('public', 'issues');
+  if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+  }
+
   const formData = formidable({
     uploadDir: './public/issues',
     keepExtensions: true,
@@ -56,7 +63,7 @@ router.post('/raise-issue', async (req, res) => {
       });
 
       // Get the most recent report for the ID
-      const recentReport = await PrioritesReport.find({})
+      const recentReport = await PrioritiesReport.find({})
         .select('id')
         .lean()
         .sort({ createdAt: -1 })
@@ -79,7 +86,9 @@ router.post('/raise-issue', async (req, res) => {
     } catch (error) {
       if (evidences) fs.unlinkSync(evidences.path);
       if (error && error.name === 'ValidationError') {
-        return res.status(400).json({ success: false, message: 'Input fields validation error' });
+        return res
+          .status(400)
+          .json({ success: false, message: 'Input fields validation error' });
       }
 
       return res.status(400).json({ success: false, message: error });
@@ -91,6 +100,12 @@ router.post('/raise-issue', async (req, res) => {
 // @desc    Update priority/issue report
 // @access  Private
 router.post('/priority-report/:id', async (req, res) => {
+  // Ensure the directory exists
+  const uploadDir = path.join('public', 'issues');
+  if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+  }
+
   const formData = formidable({
     uploadDir: './public/issues',
     keepExtensions: true,
@@ -103,7 +118,10 @@ router.post('/priority-report/:id', async (req, res) => {
 
   const report = await PrioritiesReport.findOne({ _id: req.params.id });
 
-  if (!report) return res.status(400).json({ success: false, message: 'Unable to update report' });
+  if (!report)
+    return res
+      .status(400)
+      .json({ success: false, message: 'Unable to update report' });
 
   formData.parse(req, async (error, fields, files) => {
     const { evidencesBefore, evidencesAfter } = files;
@@ -146,8 +164,14 @@ router.post('/priority-report/:id', async (req, res) => {
       console.log(arrayOfEvidencesBeforeFiles);
       console.log(arrayOfEvidencesAfterFiles);
 
-      let updatedEvidencesBefore = [...report.evidencesBefore, ...arrayOfEvidencesBeforeFiles];
-      let updatedEvidencesAfter = [...report.evidencesAfter, ...arrayOfEvidencesAfterFiles];
+      let updatedEvidencesBefore = [
+        ...report.evidencesBefore,
+        ...arrayOfEvidencesBeforeFiles,
+      ];
+      let updatedEvidencesAfter = [
+        ...report.evidencesAfter,
+        ...arrayOfEvidencesAfterFiles,
+      ];
 
       // Update db
       const updateReport = await PrioritiesReport.findOneAndUpdate(
@@ -174,7 +198,9 @@ router.post('/priority-report/:id', async (req, res) => {
       if (evidencesBefore) fs.unlinkSync(evidencesBefore.path);
       if (evidencesAfter) fs.unlinkSync(evidencesAfter.path);
       if (error && error.name === 'ValidationError') {
-        return res.status(400).json({ success: false, message: 'Input fields validation error' });
+        return res
+          .status(400)
+          .json({ success: false, message: 'Input fields validation error' });
       }
 
       return res.status(400).json({ success: false, message: error });
@@ -201,9 +227,13 @@ router.get('/cancel-issue/:id', async (req, res) => {
 
     if (!updateReport) throw 'Failed to cancel the issue';
 
-    return res.status(200).json({ success: true, message: 'Successfully cancelled the issue' });
+    return res
+      .status(200)
+      .json({ success: true, message: 'Successfully cancelled the issue' });
   } catch (error) {
-    return res.status(400).json({ success: false, message: 'Unable to update the issue' });
+    return res
+      .status(400)
+      .json({ success: false, message: 'Unable to update the issue' });
   }
 });
 
@@ -211,6 +241,12 @@ router.get('/cancel-issue/:id', async (req, res) => {
 // @desc    Update issue report
 // @access  Private
 router.post('/update-issue/:id', async (req, res) => {
+  // Ensure the directory exists
+  const uploadDir = path.join('public', 'issues');
+  if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+  }
+
   const formData = formidable({
     uploadDir: './public/issues',
     keepExtensions: true,
@@ -221,12 +257,16 @@ router.post('/update-issue/:id', async (req, res) => {
 
   const report = await PrioritiesReport.findOne({ _id: req.params.id });
 
-  if (!report) return res.status(400).json({ success: false, message: 'Unable to update report' });
-
-  if (report.user.toString() !== req.user.id.toString())
+  if (!report)
     return res
       .status(400)
-      .json({ success: false, message: 'You are not authorized to update this issue' });
+      .json({ success: false, message: 'Unable to update report' });
+
+  if (report.user.toString() !== req.user.id.toString())
+    return res.status(400).json({
+      success: false,
+      message: 'You are not authorized to update this issue',
+    });
 
   formData.parse(req, async (error, fields, files) => {
     const { evidencesBefore } = files;
@@ -255,7 +295,10 @@ router.post('/update-issue/:id', async (req, res) => {
         compressImage(`./public/${element}`);
       });
 
-      let updatedEvidencesBefore = [...report.evidencesBefore, ...arrayOfEvidencesBeforeFiles];
+      let updatedEvidencesBefore = [
+        ...report.evidencesBefore,
+        ...arrayOfEvidencesBeforeFiles,
+      ];
 
       // Update db
       const updateReport = await PrioritiesReport.findOneAndUpdate(
@@ -281,7 +324,9 @@ router.post('/update-issue/:id', async (req, res) => {
     } catch (error) {
       if (evidencesBefore) fs.unlinkSync(evidencesBefore.path);
       if (error && error.name === 'ValidationError') {
-        return res.status(400).json({ success: false, message: 'Input fields validation error' });
+        return res
+          .status(400)
+          .json({ success: false, message: 'Input fields validation error' });
       }
 
       return res.status(400).json({ success: false, message: error });
@@ -293,6 +338,12 @@ router.post('/update-issue/:id', async (req, res) => {
 // @desc    Submit initiative report
 // @access  Private
 router.post('/initiative', async (req, res) => {
+  // Ensure the directory exists
+  const uploadDir = path.join('public', 'initiatives');
+  if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+  }
+
   const formData = formidable({
     uploadDir: './public/initiatives',
     keepExtensions: true,
@@ -362,7 +413,10 @@ router.post('/initiative', async (req, res) => {
         ...fields,
         user: req.user.id,
         id: recentReport && recentReport[0] && recentReport[0].id + 1,
-        week: moment(fields.date).isoWeek() - moment(fields.date).startOf('month').isoWeek() + 1,
+        week:
+          moment(fields.date).isoWeek() -
+          moment(fields.date).startOf('month').isoWeek() +
+          1,
         evidencesBefore: arrayOfEvidencesBefore,
         evidencesAfter: arrayOfEvidencesAfter,
       });
@@ -372,7 +426,9 @@ router.post('/initiative', async (req, res) => {
       if (evidencesBefore) fs.unlinkSync(evidencesBefore.path);
       if (evidencesAfter) fs.unlinkSync(evidencesAfter.path);
       if (error && error.name === 'ValidationError') {
-        return res.status(400).json({ success: false, message: 'Input fields validation error' });
+        return res
+          .status(400)
+          .json({ success: false, message: 'Input fields validation error' });
       }
 
       return res.status(400).json({ success: false, message: error });
@@ -384,6 +440,12 @@ router.post('/initiative', async (req, res) => {
 // @desc    Update initiative report
 // @access  Private
 router.post('/update-initiative/:id', async (req, res) => {
+  // Ensure the directory exists
+  const uploadDir = path.join('public', 'initiatives');
+  if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+  }
+
   const formData = formidable({
     uploadDir: './public/initiatives',
     keepExtensions: true,
@@ -391,16 +453,22 @@ router.post('/update-initiative/:id', async (req, res) => {
   });
 
   if (!req.params.id)
-    return res.status(400).json({ success: false, message: 'Initiative report id is required' });
+    return res
+      .status(400)
+      .json({ success: false, message: 'Initiative report id is required' });
 
   const report = await Initiatives.findOne({ _id: req.params.id });
 
-  if (!report) return res.status(400).json({ success: false, message: 'Unable to update report' });
-
-  if (report.user.toString() !== req.user.id.toString())
+  if (!report)
     return res
       .status(400)
-      .json({ success: false, message: 'You are not authorized to update this initiative' });
+      .json({ success: false, message: 'Unable to update report' });
+
+  if (report.user.toString() !== req.user.id.toString())
+    return res.status(400).json({
+      success: false,
+      message: 'You are not authorized to update this initiative',
+    });
 
   formData.parse(req, async (error, fields, files) => {
     const { evidencesBefore, evidencesAfter } = files;
@@ -443,8 +511,14 @@ router.post('/update-initiative/:id', async (req, res) => {
       console.log(arrayOfEvidencesBeforeFiles);
       console.log(arrayOfEvidencesAfterFiles);
 
-      let updatedEvidencesBefore = [...report.evidencesBefore, ...arrayOfEvidencesBeforeFiles];
-      let updatedEvidencesAfter = [...report.evidencesAfter, ...arrayOfEvidencesAfterFiles];
+      let updatedEvidencesBefore = [
+        ...report.evidencesBefore,
+        ...arrayOfEvidencesBeforeFiles,
+      ];
+      let updatedEvidencesAfter = [
+        ...report.evidencesAfter,
+        ...arrayOfEvidencesAfterFiles,
+      ];
 
       // Update db
       const updateReport = await Initiatives.findOneAndUpdate(
@@ -463,7 +537,9 @@ router.post('/update-initiative/:id', async (req, res) => {
     } catch (error) {
       if (evidencesBefore) fs.unlinkSync(evidencesBefore.path);
       if (error && error.name === 'ValidationError') {
-        return res.status(400).json({ success: false, message: 'Input fields validation error' });
+        return res
+          .status(400)
+          .json({ success: false, message: 'Input fields validation error' });
       }
 
       return res.status(400).json({ success: false, message: error });
