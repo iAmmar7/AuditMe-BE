@@ -1,7 +1,7 @@
 {
-  "name": "firmfigure-server",
-  "version": "1.0.0",
-  "description": "Audit report submission and review (backend)",
+  "name": "audit-rail-server",
+  "version": "1.5.0",
+  "description": "Ensuring Excellence, One Station at a Time",
   "author": "Ammar Ansari",
   "main": "server.js",
   "scripts": {
