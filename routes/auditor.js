@@ -548,7 +548,7 @@ router.post('/update-initiative/:id', async (req, res) => {
 });
 
 router.get('/script', async (req, res) => {
-  const report = await PrioritesReport.updateMany(
+  const report = await PrioritiesReport.updateMany(
     { type: 'Bay Violation' },
     { $set: { type: 'Violation' } },
   );
