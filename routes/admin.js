@@ -3,41 +3,39 @@ const router = express.Router();
 
 // Load Models
 const AuditReport = require('../db/models/AuditReport');
-const PrioritiesReport = require('../db/models/PrioritiesReport');
 
-// @route   GET /api/admin/audit-reports
-// @desc    All audit reports
+// @route   DELETE /api/admin/audit-report
+// @desc    Delete raised audit report
 // @access  Private
-router.get('/audit-reports', async (req, res) => {
-  const page = req.query.page ? req.query.page : 1;
-
-  const limit = 10;
-  const offset = (page - 1) * limit;
-
+router.delete('/audit-report/:id', async (req, res) => {
   try {
-    const auditReports = await AuditReport.find({}).skip(offset).limit(limit);
+    const report = await AuditReport.findOne({ _id: req.params.id });
 
-    res.status(200).json({ success: true, reports: auditReports });
+    if (!report) throw 'Unable to find report';
+
+    if (report.evidencesBefore.length > 0) {
+      for (let url of report.evidencesBefore) {
+        fs.unlinkSync(`./public${url}`);
+      }
+    }
+
+    if (report.evidencesAfter.length > 0) {
+      for (let url of report.evidencesAfter) {
+        fs.unlinkSync(`./public${url}`);
+      }
+    }
+
+    const deleteIssue = await AuditReport.findOneAndRemove({
+      _id: req.params.id,
+    });
+
+    if (!deleteIssue) throw 'Unable to delete issue';
+
+    return res
+      .status(200)
+      .json({ success: true, message: 'Deleted successfully' });
   } catch (error) {
-    res.status(400).json({ success: false, message: 'An error while fetching reports', error });
-  }
-});
-
-// @route   GET /api/admin/priorities-reports
-// @desc    All priorities reports
-// @access  Private
-router.get('/priorities-reports', async (req, res) => {
-  const page = req.query.page ? req.query.page : 1;
-
-  const limit = 10;
-  const offset = (page - 1) * limit;
-
-  try {
-    const prioritiesReports = await PrioritiesReport.find({}).skip(offset).limit(limit);
-
-    res.status(200).json({ success: true, reports: prioritiesReports });
-  } catch (error) {
-    res.status(400).json({ success: false, message: 'An error while fetching reports', error });
+    return res.status(400).json({ success: false, message: error });
   }
 });
 

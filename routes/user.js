@@ -32,7 +32,7 @@ router.get('/', async (req, res) => {
 });
 
 // @route   POST /api/user/activity
-// @desc    POST update user activity
+// @desc    Update user activity
 // @access  Private
 router.post('/activity', async (req, res) => {
   try {
@@ -212,18 +212,458 @@ router.get('/report-chart', async (req, res) => {
   }
 });
 
-// @route   GET /api/user/audit-report
-// @desc    Submit audit report
+// @route   POST /api/user/audit-report
+// @desc    Get all audit reports
 // @access  Private
-router.post('/audit-report', async (req, res) => {
-  try {
-    const newReport = await AuditReport.create(req.body);
+router.post('/audit-reports', async (req, res) => {
+  const { params, sorter, filter, isPrioritized = true } = req.body;
+  let {
+    current,
+    pageSize,
+    id,
+    date,
+    user,
+    status,
+    type,
+    region,
+    processSpecialist,
+    regionalManager,
+    areaManager,
+    dateIdentified,
+    stationNumber,
+  } = params;
+  let { dateSorter, dateIdentifiedSorter, daysOpenSorter } = sorter;
+  let { statusFilter, typeFilter, regionFilter } = filter;
 
-    res.status(200).json({ success: true, report: newReport });
+  current = current ? current : 1;
+  pageSize = pageSize ? pageSize : 10;
+
+  const offset = +pageSize * (+current - 1);
+
+  try {
+    // Add query params if exist in request
+    const matchQuery = [];
+    if (id) matchQuery.push({ id: parseInt(id) });
+    if (date)
+      matchQuery.push({
+        date: {
+          $gte: moment(new Date(date[0])).utcOffset(0).startOf('day').toDate(),
+          $lte: moment(new Date(date[1])).utcOffset(0).endOf('day').toDate(),
+        },
+      });
+    if (user) matchQuery.push({ 'user.name': { $regex: user, $options: 'i' } });
+    if (status) matchQuery.push({ status: { $regex: status, $options: 'i' } });
+    if (type) matchQuery.push({ type: { $regex: type, $options: 'i' } });
+    if (region) matchQuery.push({ region: { $regex: region, $options: 'i' } });
+    if (processSpecialist)
+      matchQuery.push({
+        processSpecialist: { $regex: processSpecialist, $options: 'i' },
+      });
+    if (regionalManager)
+      matchQuery.push({
+        regionalManager: { $regex: regionalManager, $options: 'i' },
+      });
+    if (areaManager)
+      matchQuery.push({ areaManager: { $regex: areaManager, $options: 'i' } });
+    if (stationNumber)
+      matchQuery.push({
+        stationNumber: { $regex: stationNumber, $options: 'i' },
+      });
+    if (dateIdentified)
+      matchQuery.push({
+        dateIdentified: {
+          $gte: moment(new Date(dateIdentified[0]))
+            .utcOffset(0)
+            .startOf('day')
+            .toDate(),
+          $lte: moment(new Date(dateIdentified[1]))
+            .utcOffset(0)
+            .endOf('day')
+            .toDate(),
+        },
+      });
+
+    // Add sorter if exist in request
+    let sortBy = { 'root.createdAt': -1 };
+    if (dateSorter === 'ascend') sortBy = { 'root.date': +1 };
+    if (dateSorter === 'descend') sortBy = { 'root.date': -1 };
+    if (dateIdentifiedSorter === 'ascend')
+      sortBy = { 'root.dateIdentified': +1 };
+    if (dateIdentifiedSorter === 'descend')
+      sortBy = { 'root.dateIdentified': -1 };
+    if (daysOpenSorter === 'ascend') sortBy = { daysOpen: +1 };
+    if (daysOpenSorter === 'descend') sortBy = { daysOpen: -1 };
+
+    // Add filter if exist in request
+    if (statusFilter) {
+      matchQuery.push({ status: { $in: statusFilter } });
+    }
+    if (typeFilter) {
+      matchQuery.push({ type: { $in: typeFilter } });
+    }
+    if (regionFilter) {
+      matchQuery.push({ region: { $in: regionFilter } });
+    }
+
+    console.log(matchQuery);
+
+    // Get reports
+    const reports = await AuditReport.aggregate([
+      {
+        $lookup: {
+          from: User.collection.name,
+          localField: 'user',
+          foreignField: '_id',
+          as: 'user',
+        },
+      },
+      { $unwind: '$user' },
+      {
+        $match:
+          matchQuery.length > 0
+            ? {
+                $and: [{ isPrioritized }, ...matchQuery],
+              }
+            : { isPrioritized },
+      },
+      {
+        $project: {
+          _id: '$_id',
+          daysOpen: {
+            $trunc: {
+              $divide: [
+                {
+                  $subtract: [
+                    { $ifNull: ['$dateOfClosure', new Date()] },
+                    '$dateIdentified',
+                  ],
+                },
+                1000 * 60 * 60 * 24,
+              ],
+            },
+          },
+          root: '$$ROOT',
+        },
+      },
+      { $sort: sortBy },
+      { $limit: +pageSize + offset },
+      { $skip: offset },
+      {
+        $lookup: {
+          from: User.collection.name,
+          localField: 'root.resolvedBy',
+          foreignField: '_id',
+          as: 'resolvedBy',
+        },
+      },
+      {
+        $unwind: {
+          path: '$resolvedBy',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $project: {
+          _id: '$_id',
+          daysOpen: '$daysOpen',
+          id: '$root.id',
+          date: '$root.date',
+          week: '$root.week',
+          userName: '$root.user.name',
+          userId: '$root.user._id',
+          resolvedByName: { $ifNull: ['$resolvedBy.name', null] },
+          resolvedById: { $ifNull: ['$resolvedBy._id', null] },
+          type: '$root.type',
+          status: '$root.status',
+          region: '$root.region',
+          areaManager: '$root.areaManager',
+          regionalManager: '$root.regionalManager',
+          processSpecialist: '$root.processSpecialist',
+          issueDetails: '$root.issueDetails',
+          stationNumber: '$root.stationNumber',
+          evidencesBefore: '$root.evidencesBefore',
+          evidencesAfter: '$root.evidencesAfter',
+          feedback: '$root.feedback',
+          dateOfClosure: '$root.dateOfClosure',
+          dateIdentified: '$root.dateIdentified',
+          actionTaken: '$root.actionTaken',
+          logNumber: '$root.logNumber',
+          maintenanceComment: '$root.maintenanceComment',
+          isPrioritized: '$root.isPrioritized',
+          updatedBy: '$root.updatedBy',
+          createdAt: '$root.createdAt',
+          updatedAt: '$root.updatedAt',
+        },
+      },
+    ]);
+
+    if (!reports)
+      return res
+        .status(400)
+        .json({ success: false, message: 'No report found' });
+
+    // Get reports count
+    const reportsCount = await AuditReport.aggregate([
+      {
+        $lookup: {
+          from: User.collection.name,
+          localField: 'user',
+          foreignField: '_id',
+          as: 'user',
+        },
+      },
+      { $unwind: '$user' },
+      {
+        $match:
+          matchQuery.length > 0
+            ? {
+                $and: [{ isPrioritized }, ...matchQuery],
+              }
+            : { isPrioritized },
+      },
+      {
+        $group: {
+          _id: 0,
+          count: { $sum: 1 },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          count: '$count',
+        },
+      },
+    ]);
+
+    if (!reportsCount)
+      return res
+        .status(400)
+        .json({ success: false, message: 'Unable to calculate report count' });
+
+    return res.status(200).json({
+      success: true,
+      reports,
+      totalReports: reportsCount.length < 1 ? 0 : reportsCount[0].count,
+    });
   } catch (error) {
-    return res
-      .status(400)
-      .json({ success: false, message: 'Some fields are missing', error });
+    return res.status(400).json({
+      success: false,
+      message: 'Unable to fetch reports, reload',
+    });
+  }
+});
+
+// @route   GET /api/user/initiative-reports
+// @desc    Get all initiatives reports
+// @access  Private
+router.post('/initiative-reports', async (req, res) => {
+  const { params, sorter, filter } = req.body;
+  let {
+    current,
+    pageSize,
+    id,
+    date,
+    user,
+    status,
+    type,
+    region,
+    processSpecialist,
+    regionalManager,
+    areaManager,
+    dateIdentified,
+    stationNumber,
+  } = params;
+  let { dateSorter, dateIdentifiedSorter, daysOpenSorter } = sorter;
+  let { statusFilter, typeFilter, regionFilter } = filter;
+
+  current = current ? current : 1;
+  pageSize = pageSize ? pageSize : 10;
+
+  const offset = +pageSize * (+current - 1);
+
+  try {
+    // Add query params if exist in request
+    const matchQuery = [];
+    if (id) matchQuery.push({ id: parseInt(id) });
+    if (date)
+      matchQuery.push({
+        date: {
+          $gte: moment(new Date(date[0])).utcOffset(0).startOf('day').toDate(),
+          $lte: moment(new Date(date[1])).utcOffset(0).endOf('day').toDate(),
+        },
+      });
+    if (user) matchQuery.push({ 'user.name': { $regex: user, $options: 'i' } });
+    if (status) matchQuery.push({ status: { $regex: status, $options: 'i' } });
+    if (type) matchQuery.push({ type: { $regex: type, $options: 'i' } });
+    if (region) matchQuery.push({ region: { $regex: region, $options: 'i' } });
+    if (processSpecialist)
+      matchQuery.push({
+        processSpecialist: { $regex: processSpecialist, $options: 'i' },
+      });
+    if (regionalManager)
+      matchQuery.push({
+        regionalManager: { $regex: regionalManager, $options: 'i' },
+      });
+    if (areaManager)
+      matchQuery.push({ areaManager: { $regex: areaManager, $options: 'i' } });
+    if (stationNumber)
+      matchQuery.push({
+        stationNumber: { $regex: stationNumber, $options: 'i' },
+      });
+    if (dateIdentified)
+      matchQuery.push({
+        dateIdentified: {
+          $gte: moment(new Date(dateIdentified[0]))
+            .utcOffset(0)
+            .startOf('day')
+            .toDate(),
+          $lte: moment(new Date(dateIdentified[1]))
+            .utcOffset(0)
+            .endOf('day')
+            .toDate(),
+        },
+      });
+
+    // Add sorter if exist in request
+    let sortBy = { 'root.createdAt': -1 };
+    if (dateSorter === 'ascend') sortBy = { 'root.date': +1 };
+    if (dateSorter === 'descend') sortBy = { 'root.date': -1 };
+    if (dateIdentifiedSorter === 'ascend')
+      sortBy = { 'root.dateIdentified': +1 };
+    if (dateIdentifiedSorter === 'descend')
+      sortBy = { 'root.dateIdentified': -1 };
+    if (daysOpenSorter === 'ascend') sortBy = { daysOpen: +1 };
+    if (daysOpenSorter === 'descend') sortBy = { daysOpen: -1 };
+
+    // Add filter if exist in request
+    if (statusFilter) {
+      matchQuery.push({ status: { $in: statusFilter } });
+    }
+    if (typeFilter) {
+      matchQuery.push({ type: { $in: typeFilter } });
+    }
+    if (regionFilter) {
+      matchQuery.push({ region: { $in: regionFilter } });
+    }
+
+    // Get reports
+    const reports = await Initiatives.aggregate([
+      {
+        $lookup: {
+          from: User.collection.name,
+          localField: 'user',
+          foreignField: '_id',
+          as: 'user',
+        },
+      },
+      { $unwind: '$user' },
+      {
+        $match:
+          matchQuery.length > 0
+            ? {
+                $and: matchQuery,
+              }
+            : {},
+      },
+      {
+        $project: {
+          _id: '$_id',
+          daysOpen: {
+            $trunc: {
+              $divide: [
+                {
+                  $subtract: [
+                    { $ifNull: ['$dateOfClosure', new Date()] },
+                    '$dateIdentified',
+                  ],
+                },
+                1000 * 60 * 60 * 24,
+              ],
+            },
+          },
+          root: '$$ROOT',
+        },
+      },
+      { $sort: sortBy },
+      { $limit: +pageSize + offset },
+      { $skip: offset },
+      {
+        $project: {
+          _id: '$_id',
+          id: '$root.id',
+          date: '$root.date',
+          week: '$root.week',
+          userName: '$root.user.name',
+          userId: '$root.user._id',
+          type: '$root.type',
+          region: '$root.region',
+          areaManager: '$root.areaManager',
+          regionalManager: '$root.regionalManager',
+          details: '$root.details',
+          stationNumber: '$root.stationNumber',
+          evidencesBefore: '$root.evidencesBefore',
+          evidencesAfter: '$root.evidencesAfter',
+          dateIdentified: '$root.dateIdentified',
+          actionTaken: '$root.actionTaken',
+          createdAt: '$root.createdAt',
+          updatedAt: '$root.updatedAt',
+        },
+      },
+    ]);
+
+    if (!reports)
+      return res
+        .status(400)
+        .json({ success: false, message: 'No report found' });
+
+    // Get reports count
+    const reportsCount = await Initiatives.aggregate([
+      {
+        $lookup: {
+          from: User.collection.name,
+          localField: 'user',
+          foreignField: '_id',
+          as: 'user',
+        },
+      },
+      { $unwind: '$user' },
+      {
+        $match:
+          matchQuery.length > 0
+            ? {
+                $and: matchQuery,
+              }
+            : {},
+      },
+      {
+        $group: {
+          _id: 0,
+          count: { $sum: 1 },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          count: '$count',
+        },
+      },
+    ]);
+
+    if (!reportsCount)
+      return res
+        .status(400)
+        .json({ success: false, message: 'Unable to calculate report count' });
+
+    return res.status(200).json({
+      success: true,
+      reports,
+      totalReports: reportsCount.length < 1 ? 0 : reportsCount[0].count,
+    });
+  } catch (error) {
+    return res.status(400).json({
+      success: false,
+      message: 'Unable to fetch reports, reload',
+    });
   }
 });
 
@@ -418,249 +858,6 @@ router.post('/priority-report/:id', async (req, res) => {
   });
 });
 
-// @route   POST /api/user/priorities-reports
-// @desc    Get all priorities reports
-// @access  Private
-router.post('/priorities-reports', async (req, res) => {
-  const { params, sorter, filter, isPrioritized = true } = req.body;
-  let {
-    current,
-    pageSize,
-    id,
-    date,
-    user,
-    status,
-    type,
-    region,
-    processSpecialist,
-    regionalManager,
-    areaManager,
-    dateIdentified,
-    stationNumber,
-  } = params;
-  let { dateSorter, dateIdentifiedSorter, daysOpenSorter } = sorter;
-  let { statusFilter, typeFilter, regionFilter } = filter;
-
-  console.log('/priorities-reports', req.body);
-
-  current = current ? current : 1;
-  pageSize = pageSize ? pageSize : 10;
-
-  const offset = +pageSize * (+current - 1);
-
-  try {
-    // Add query params if exist in request
-    const matchQuery = [];
-    if (id) matchQuery.push({ id: parseInt(id) });
-    if (date)
-      matchQuery.push({
-        date: {
-          $gte: moment(new Date(date[0])).utcOffset(0).startOf('day').toDate(),
-          $lte: moment(new Date(date[1])).utcOffset(0).endOf('day').toDate(),
-        },
-      });
-    if (user) matchQuery.push({ 'user.name': { $regex: user, $options: 'i' } });
-    if (status) matchQuery.push({ status: { $regex: status, $options: 'i' } });
-    if (type) matchQuery.push({ type: { $regex: type, $options: 'i' } });
-    if (region) matchQuery.push({ region: { $regex: region, $options: 'i' } });
-    if (processSpecialist)
-      matchQuery.push({
-        processSpecialist: { $regex: processSpecialist, $options: 'i' },
-      });
-    if (regionalManager)
-      matchQuery.push({
-        regionalManager: { $regex: regionalManager, $options: 'i' },
-      });
-    if (areaManager)
-      matchQuery.push({ areaManager: { $regex: areaManager, $options: 'i' } });
-    if (stationNumber)
-      matchQuery.push({
-        stationNumber: { $regex: stationNumber, $options: 'i' },
-      });
-    if (dateIdentified)
-      matchQuery.push({
-        dateIdentified: {
-          $gte: moment(new Date(dateIdentified[0]))
-            .utcOffset(0)
-            .startOf('day')
-            .toDate(),
-          $lte: moment(new Date(dateIdentified[1]))
-            .utcOffset(0)
-            .endOf('day')
-            .toDate(),
-        },
-      });
-
-    // Add sorter if exist in request
-    let sortBy = { 'root.createdAt': -1 };
-    if (dateSorter === 'ascend') sortBy = { 'root.date': +1 };
-    if (dateSorter === 'descend') sortBy = { 'root.date': -1 };
-    if (dateIdentifiedSorter === 'ascend')
-      sortBy = { 'root.dateIdentified': +1 };
-    if (dateIdentifiedSorter === 'descend')
-      sortBy = { 'root.dateIdentified': -1 };
-    if (daysOpenSorter === 'ascend') sortBy = { daysOpen: +1 };
-    if (daysOpenSorter === 'descend') sortBy = { daysOpen: -1 };
-
-    // Add filter if exist in request
-    if (statusFilter) {
-      matchQuery.push({ status: { $in: statusFilter } });
-    }
-    if (typeFilter) {
-      matchQuery.push({ type: { $in: typeFilter } });
-    }
-    if (regionFilter) {
-      matchQuery.push({ region: { $in: regionFilter } });
-    }
-
-    console.log(matchQuery);
-
-    // Get reports
-    const reports = await PrioritiesReport.aggregate([
-      {
-        $lookup: {
-          from: User.collection.name,
-          localField: 'user',
-          foreignField: '_id',
-          as: 'user',
-        },
-      },
-      { $unwind: '$user' },
-      {
-        $match:
-          matchQuery.length > 0
-            ? {
-                $and: [{ isPrioritized }, ...matchQuery],
-              }
-            : { isPrioritized },
-      },
-      {
-        $project: {
-          _id: '$_id',
-          daysOpen: {
-            $trunc: {
-              $divide: [
-                {
-                  $subtract: [
-                    { $ifNull: ['$dateOfClosure', new Date()] },
-                    '$dateIdentified',
-                  ],
-                },
-                1000 * 60 * 60 * 24,
-              ],
-            },
-          },
-          root: '$$ROOT',
-        },
-      },
-      { $sort: sortBy },
-      { $limit: +pageSize + offset },
-      { $skip: offset },
-      {
-        $lookup: {
-          from: User.collection.name,
-          localField: 'root.resolvedBy',
-          foreignField: '_id',
-          as: 'resolvedBy',
-        },
-      },
-      {
-        $unwind: {
-          path: '$resolvedBy',
-          preserveNullAndEmptyArrays: true,
-        },
-      },
-      {
-        $project: {
-          _id: '$_id',
-          daysOpen: '$daysOpen',
-          id: '$root.id',
-          date: '$root.date',
-          week: '$root.week',
-          userName: '$root.user.name',
-          userId: '$root.user._id',
-          resolvedByName: { $ifNull: ['$resolvedBy.name', null] },
-          resolvedById: { $ifNull: ['$resolvedBy._id', null] },
-          type: '$root.type',
-          status: '$root.status',
-          region: '$root.region',
-          areaManager: '$root.areaManager',
-          regionalManager: '$root.regionalManager',
-          processSpecialist: '$root.processSpecialist',
-          issueDetails: '$root.issueDetails',
-          stationNumber: '$root.stationNumber',
-          evidencesBefore: '$root.evidencesBefore',
-          evidencesAfter: '$root.evidencesAfter',
-          feedback: '$root.feedback',
-          dateOfClosure: '$root.dateOfClosure',
-          dateIdentified: '$root.dateIdentified',
-          actionTaken: '$root.actionTaken',
-          logNumber: '$root.logNumber',
-          maintenanceComment: '$root.maintenanceComment',
-          isPrioritized: '$root.isPrioritized',
-          updatedBy: '$root.updatedBy',
-          createdAt: '$root.createdAt',
-          updatedAt: '$root.updatedAt',
-        },
-      },
-    ]);
-
-    if (!reports)
-      return res
-        .status(400)
-        .json({ success: false, message: 'No report found' });
-
-    // Get reports count
-    const reportsCount = await PrioritiesReport.aggregate([
-      {
-        $lookup: {
-          from: User.collection.name,
-          localField: 'user',
-          foreignField: '_id',
-          as: 'user',
-        },
-      },
-      { $unwind: '$user' },
-      {
-        $match:
-          matchQuery.length > 0
-            ? {
-                $and: [{ isPrioritized }, ...matchQuery],
-              }
-            : { isPrioritized },
-      },
-      {
-        $group: {
-          _id: 0,
-          count: { $sum: 1 },
-        },
-      },
-      {
-        $project: {
-          _id: 0,
-          count: '$count',
-        },
-      },
-    ]);
-
-    if (!reportsCount)
-      return res
-        .status(400)
-        .json({ success: false, message: 'Unable to calculate report count' });
-
-    return res.status(200).json({
-      success: true,
-      reports,
-      totalReports: reportsCount.length < 1 ? 0 : reportsCount[0].count,
-    });
-  } catch (error) {
-    return res.status(400).json({
-      success: false,
-      message: 'Unable to fetch reports, reload',
-    });
-  }
-});
-
 // @route   GET /api/user/csv/priorities-reports
 // @desc    Get all priorities reports
 // @access  Private
@@ -846,224 +1043,6 @@ router.post('/csv/priorities-reports', async (req, res) => {
   }
 });
 
-// @route   GET /api/user/initiatives-reports
-// @desc    Get all initiatives reports
-// @access  Private
-router.post('/initiatives-reports', async (req, res) => {
-  const { params, sorter, filter } = req.body;
-  let {
-    current,
-    pageSize,
-    id,
-    date,
-    user,
-    status,
-    type,
-    region,
-    processSpecialist,
-    regionalManager,
-    areaManager,
-    dateIdentified,
-    stationNumber,
-  } = params;
-  let { dateSorter, dateIdentifiedSorter, daysOpenSorter } = sorter;
-  let { statusFilter, typeFilter, regionFilter } = filter;
-
-  console.log(req.body);
-
-  current = current ? current : 1;
-  pageSize = pageSize ? pageSize : 10;
-
-  const offset = +pageSize * (+current - 1);
-
-  try {
-    // Add query params if exist in request
-    const matchQuery = [];
-    if (id) matchQuery.push({ id: parseInt(id) });
-    if (date)
-      matchQuery.push({
-        date: {
-          $gte: moment(new Date(date[0])).utcOffset(0).startOf('day').toDate(),
-          $lte: moment(new Date(date[1])).utcOffset(0).endOf('day').toDate(),
-        },
-      });
-    if (user) matchQuery.push({ 'user.name': { $regex: user, $options: 'i' } });
-    if (status) matchQuery.push({ status: { $regex: status, $options: 'i' } });
-    if (type) matchQuery.push({ type: { $regex: type, $options: 'i' } });
-    if (region) matchQuery.push({ region: { $regex: region, $options: 'i' } });
-    if (processSpecialist)
-      matchQuery.push({
-        processSpecialist: { $regex: processSpecialist, $options: 'i' },
-      });
-    if (regionalManager)
-      matchQuery.push({
-        regionalManager: { $regex: regionalManager, $options: 'i' },
-      });
-    if (areaManager)
-      matchQuery.push({ areaManager: { $regex: areaManager, $options: 'i' } });
-    if (stationNumber)
-      matchQuery.push({
-        stationNumber: { $regex: stationNumber, $options: 'i' },
-      });
-    if (dateIdentified)
-      matchQuery.push({
-        dateIdentified: {
-          $gte: moment(new Date(dateIdentified[0]))
-            .utcOffset(0)
-            .startOf('day')
-            .toDate(),
-          $lte: moment(new Date(dateIdentified[1]))
-            .utcOffset(0)
-            .endOf('day')
-            .toDate(),
-        },
-      });
-
-    // Add sorter if exist in request
-    let sortBy = { 'root.createdAt': -1 };
-    if (dateSorter === 'ascend') sortBy = { 'root.date': +1 };
-    if (dateSorter === 'descend') sortBy = { 'root.date': -1 };
-    if (dateIdentifiedSorter === 'ascend')
-      sortBy = { 'root.dateIdentified': +1 };
-    if (dateIdentifiedSorter === 'descend')
-      sortBy = { 'root.dateIdentified': -1 };
-    if (daysOpenSorter === 'ascend') sortBy = { daysOpen: +1 };
-    if (daysOpenSorter === 'descend') sortBy = { daysOpen: -1 };
-
-    // Add filter if exist in request
-    if (statusFilter) {
-      matchQuery.push({ status: { $in: statusFilter } });
-    }
-    if (typeFilter) {
-      matchQuery.push({ type: { $in: typeFilter } });
-    }
-    if (regionFilter) {
-      matchQuery.push({ region: { $in: regionFilter } });
-    }
-
-    console.log(matchQuery);
-
-    // Get reports
-    const reports = await Initiatives.aggregate([
-      {
-        $lookup: {
-          from: User.collection.name,
-          localField: 'user',
-          foreignField: '_id',
-          as: 'user',
-        },
-      },
-      { $unwind: '$user' },
-      {
-        $match:
-          matchQuery.length > 0
-            ? {
-                $and: matchQuery,
-              }
-            : {},
-      },
-      {
-        $project: {
-          _id: '$_id',
-          daysOpen: {
-            $trunc: {
-              $divide: [
-                {
-                  $subtract: [
-                    { $ifNull: ['$dateOfClosure', new Date()] },
-                    '$dateIdentified',
-                  ],
-                },
-                1000 * 60 * 60 * 24,
-              ],
-            },
-          },
-          root: '$$ROOT',
-        },
-      },
-      { $sort: sortBy },
-      { $limit: +pageSize + offset },
-      { $skip: offset },
-      {
-        $project: {
-          _id: '$_id',
-          id: '$root.id',
-          date: '$root.date',
-          week: '$root.week',
-          userName: '$root.user.name',
-          userId: '$root.user._id',
-          type: '$root.type',
-          region: '$root.region',
-          areaManager: '$root.areaManager',
-          regionalManager: '$root.regionalManager',
-          details: '$root.details',
-          stationNumber: '$root.stationNumber',
-          evidencesBefore: '$root.evidencesBefore',
-          evidencesAfter: '$root.evidencesAfter',
-          dateIdentified: '$root.dateIdentified',
-          actionTaken: '$root.actionTaken',
-          createdAt: '$root.createdAt',
-          updatedAt: '$root.updatedAt',
-        },
-      },
-    ]);
-
-    if (!reports)
-      return res
-        .status(400)
-        .json({ success: false, message: 'No report found' });
-
-    // Get reports count
-    const reportsCount = await Initiatives.aggregate([
-      {
-        $lookup: {
-          from: User.collection.name,
-          localField: 'user',
-          foreignField: '_id',
-          as: 'user',
-        },
-      },
-      { $unwind: '$user' },
-      {
-        $match:
-          matchQuery.length > 0
-            ? {
-                $and: matchQuery,
-              }
-            : {},
-      },
-      {
-        $group: {
-          _id: 0,
-          count: { $sum: 1 },
-        },
-      },
-      {
-        $project: {
-          _id: 0,
-          count: '$count',
-        },
-      },
-    ]);
-
-    if (!reportsCount)
-      return res
-        .status(400)
-        .json({ success: false, message: 'Unable to calculate report count' });
-
-    return res.status(200).json({
-      success: true,
-      reports,
-      totalReports: reportsCount.length < 1 ? 0 : reportsCount[0].count,
-    });
-  } catch (error) {
-    return res.status(400).json({
-      success: false,
-      message: 'Unable to fetch reports, reload',
-    });
-  }
-});
-
 // @route   GET /api/user/csv/priorities-reports
 // @desc    Get all priorities reports
 // @access  Private
@@ -1235,43 +1214,6 @@ router.post('/delete-image', async (req, res) => {
     return res
       .status(200)
       .json({ success: true, message: 'Image deleted successfully' });
-  } catch (error) {
-    return res.status(400).json({ success: false, message: error });
-  }
-});
-
-// @route   POST /api/user/delete-issue
-// @desc    Delete raised issue
-// @access  Private
-router.delete('/delete-issue/:id', async (req, res) => {
-  try {
-    if (!req.user.isAdmin) throw 'You are not authorized';
-
-    const report = await PrioritiesReport.findOne({ _id: req.params.id });
-
-    if (!report) throw 'Unable to find report';
-
-    if (report.evidencesBefore.length > 0) {
-      for (let url of report.evidencesBefore) {
-        fs.unlinkSync(`./public${url}`);
-      }
-    }
-
-    if (report.evidencesAfter.length > 0) {
-      for (let url of report.evidencesAfter) {
-        fs.unlinkSync(`./public${url}`);
-      }
-    }
-
-    const deleteIssue = await PrioritiesReport.findOneAndRemove({
-      _id: req.params.id,
-    });
-
-    if (!deleteIssue) throw 'Unable to delete issue';
-
-    return res
-      .status(200)
-      .json({ success: true, message: 'Deleted successfully' });
   } catch (error) {
     return res.status(400).json({ success: false, message: error });
   }

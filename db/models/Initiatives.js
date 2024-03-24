@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
-const Schema = mongoose.Schema;
+const { regions, issueType } = require('../../utils/constants');
 
-const InitiativesSchema = new Schema(
+const InitiativesSchema = new mongoose.Schema(
   {
     id: {
       type: Number,
@@ -17,54 +17,26 @@ const InitiativesSchema = new Schema(
       type: Date,
       required: true,
     },
-    week: {
-      type: Number,
-      required: true,
-    },
     region: {
       type: String,
       required: true,
-      enum: [
-        'WR-North',
-        'WR-South',
-        'CR-East',
-        'CR-South',
-        'CR-North',
-        'Southern',
-        'ER-North',
-        'ER-South',
-      ],
+      enum: regions,
     },
-    areaManager: {
-      type: String,
-      required: true,
-    },
-    regionalManager: {
-      type: String,
+    stationManager: {
+      type: mongoose.SchemaTypes.ObjectId,
+      ref: 'user',
       required: true,
     },
     type: {
       type: String,
       required: true,
-      enum: [
-        'Customer Experience',
-        'Housekeeping',
-        'Customer Mistreatment',
-        'Initiative',
-        'Admin Issues',
-        'Maintenance Issues',
-        'IT Issues',
-        'Inventory Issues',
-        'Violation',
-        'Safety',
-        'Others',
-      ],
+      enum: issueType,
     },
     details: {
       type: String,
       required: true,
     },
-    stationNumber: {
+    station: {
       type: String,
       required: true,
     },

@@ -18,6 +18,7 @@ if (process.env.NODE_ENV === 'production') {
 // Load Routes
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/user');
+const adminRoutes = require('./routes/admin');
 const auditRoutes = require('./routes/audit');
 const rmRoutes = require('./routes/rm');
 const amRoutes = require('./routes/am');
@@ -42,16 +43,11 @@ require('./config/passport')(passport);
 
 // Use Routes
 app.use('/api/auth', authRoutes);
-app.use(
-  '/api/user',
-  userAuth,
-  userRole(['auditor', 'sm', 'viewer']),
-  userRoutes,
-);
-app.use('/api/auditor', userAuth, userRole(['auditor']), auditRoutes);
+app.use('/api/user', userAuth, userRoutes);
+app.use('/api/auditor', userAuth, userRole(['auditor', 'admin']), auditRoutes);
+app.use('/api/admin', userAuth, userRole(['admin']), adminRoutes);
 app.use('/api/rm', userAuth, userRole(['rm']), rmRoutes);
 app.use('/api/am', userAuth, userRole(['am']), amRoutes);
-// app.use('/api/admin', userAuth, userRole(['admin']), adminRoutes);
 
 // Serve Frontend in production
 if (process.env.NODE_ENV === 'production') {
