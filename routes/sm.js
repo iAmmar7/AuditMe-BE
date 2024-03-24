@@ -1,34 +1,20 @@
 const fs = require('fs');
 const express = require('express');
-const moment = require('moment');
-const formidable = require('formidable');
 const router = express.Router();
 
-// Load Models
-const PrioritiesReport = require('../db/models/PrioritiesReport');
-
-// Load utils
 const compressImage = require('../utils/compressImage');
+const AuditReport = require('../db/models/AuditReport');
+const { getFormidable } = require('../utils/getFormidable');
 
-// @route   POST /api/rm/update-issue/:id
+// @route   PATCH /api/sm/report/:id
 // @desc    Update issue report
 // @access  Private
-router.post('/update-issue/:id', async (req, res) => {
-  // Ensure the directory exists
-  const uploadDir = path.join('public', 'issues');
-  if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-  }
-
-  const formData = formidable({
-    uploadDir: './public/issues',
-    keepExtensions: true,
-    multiples: true,
-  });
+router.patch('/report/:id', async (req, res) => {
+  const formData = getFormidable('issues');
 
   if (!req.params.id) return;
 
-  const report = await PrioritiesReport.findOne({ _id: req.params.id });
+  const report = await AuditReport.findOne({ _id: req.params.id });
 
   if (!report)
     return res
@@ -57,8 +43,6 @@ router.post('/update-issue/:id', async (req, res) => {
         });
       }
 
-      console.log(arrayOfEvidencesAfterFiles);
-
       // Check image size and reduce if greater than 1mb
       arrayOfEvidencesAfterFiles.forEach(async (element) => {
         compressImage(`./public/${element}`);
@@ -70,7 +54,7 @@ router.post('/update-issue/:id', async (req, res) => {
       ];
 
       // Update db
-      const updateReport = await PrioritiesReport.findOneAndUpdate(
+      const updateReport = await AuditReport.findOneAndUpdate(
         { _id: req.params.id },
         {
           ...fields,

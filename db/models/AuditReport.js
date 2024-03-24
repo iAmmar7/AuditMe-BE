@@ -12,7 +12,7 @@ const AuditReportSchema = new mongoose.Schema(
       required: true,
       default: () => nanoid(),
     },
-    user: {
+    auditor: {
       type: mongoose.SchemaTypes.ObjectId,
       ref: 'user',
       required: true,
@@ -65,10 +65,6 @@ const AuditReportSchema = new mongoose.Schema(
     },
     dateOfClosure: {
       type: Date,
-      default: null,
-    },
-    logNumber: {
-      type: String,
       default: null,
     },
     maintenanceComment: {

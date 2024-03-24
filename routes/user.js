@@ -305,19 +305,26 @@ router.post('/audit-reports', async (req, res) => {
       matchQuery.push({ region: { $in: regionFilter } });
     }
 
-    console.log(matchQuery);
-
     // Get reports
     const reports = await AuditReport.aggregate([
       {
         $lookup: {
           from: User.collection.name,
-          localField: 'user',
+          localField: 'auditor',
           foreignField: '_id',
-          as: 'user',
+          as: 'auditor',
         },
       },
-      { $unwind: '$user' },
+      { $unwind: '$auditor' },
+      {
+        $lookup: {
+          from: User.collection.name,
+          localField: 'stationManager',
+          foreignField: '_id',
+          as: 'stationManager',
+        },
+      },
+      { $unwind: '$stationManager' },
       {
         $match:
           matchQuery.length > 0
@@ -369,25 +376,23 @@ router.post('/audit-reports', async (req, res) => {
           id: '$root.id',
           date: '$root.date',
           week: '$root.week',
-          userName: '$root.user.name',
-          userId: '$root.user._id',
+          auditor: '$root.auditor.name',
+          auditorId: '$root.auditor._id',
           resolvedByName: { $ifNull: ['$resolvedBy.name', null] },
           resolvedById: { $ifNull: ['$resolvedBy._id', null] },
           type: '$root.type',
           status: '$root.status',
           region: '$root.region',
-          areaManager: '$root.areaManager',
-          regionalManager: '$root.regionalManager',
-          processSpecialist: '$root.processSpecialist',
-          issueDetails: '$root.issueDetails',
-          stationNumber: '$root.stationNumber',
+          details: '$root.details',
+          station: '$root.station',
+          stationManager: '$root.stationManager.name',
+          stationManagerId: '$root.stationManager._id',
           evidencesBefore: '$root.evidencesBefore',
           evidencesAfter: '$root.evidencesAfter',
           feedback: '$root.feedback',
           dateOfClosure: '$root.dateOfClosure',
           dateIdentified: '$root.dateIdentified',
           actionTaken: '$root.actionTaken',
-          logNumber: '$root.logNumber',
           maintenanceComment: '$root.maintenanceComment',
           isPrioritized: '$root.isPrioritized',
           updatedBy: '$root.updatedBy',
@@ -667,195 +672,57 @@ router.post('/initiative-reports', async (req, res) => {
   }
 });
 
-// @route   POST /api/user/priorities-report
-// @desc    Submit priorities/issue report
+// @route   PATCH /api/user/delete-image
+// @desc    Delete saved image
 // @access  Private
-router.post('/priorities-report', async (req, res) => {
-  // Ensure the directory exists
-  const uploadDir = path.join('public', 'issues');
-  if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-  }
+router.patch('/delete-image', async (req, res) => {
+  const { requestType, imageType, id, url } = req.body;
 
-  const formData = formidable({
-    uploadDir: './public/issues',
-    keepExtensions: true,
-    multiples: true,
-  });
+  try {
+    if (!requestType || !imageType || !id || !url)
+      throw 'Request type, image type, ID and URL is required';
 
-  formData.parse(req, async (error, fields, files) => {
-    const { evidencesBefore, evidencesAfter } = files;
-    try {
-      if (error) throw 'Unable to upload image!';
+    let updateObj = {};
 
-      let arrayOfEvidencesBeforeFiles = [],
-        arrayOfEvidencesAfterFiles = [];
+    if (imageType === 'evidenceBefore')
+      updateObj = { $pull: { evidencesBefore: url } };
+    if (imageType === 'evidenceAfter')
+      updateObj = { $pull: { evidencesAfter: url } };
 
-      if (evidencesBefore) {
-        Object.keys(evidencesBefore).forEach((value) => {
-          if (evidencesBefore[value] && evidencesBefore[value].path) {
-            const path = evidencesBefore[value].path.split('public')[1];
-            arrayOfEvidencesBeforeFiles.push(path);
-          }
-          if (value === 'path') {
-            const path = evidencesBefore[value].split('public')[1];
-            arrayOfEvidencesBeforeFiles.filter((item) => {
-              if (item !== path) arrayOfEvidencesBeforeFiles.push(path);
-            });
-          }
-        });
-      }
-
-      if (evidencesAfter) {
-        Object.keys(evidencesAfter).forEach((value) => {
-          if (evidencesAfter[value] && evidencesAfter[value].path) {
-            const path = evidencesAfter[value].path.split('public')[1];
-            arrayOfEvidencesAfterFiles.push(path);
-          }
-          if (value === 'path') {
-            const path = evidencesAfter[value].split('public')[1];
-            arrayOfEvidencesAfterFiles.filter((item) => {
-              if (item !== path) arrayOfEvidencesAfterFiles.push(path);
-            });
-          }
-        });
-      }
-
-      console.log(arrayOfEvidencesBeforeFiles);
-      console.log(arrayOfEvidencesAfterFiles);
-
-      const report = await PrioritiesReport.create({
-        ...fields,
-        user: req.user.id,
-        evidencesBefore: arrayOfEvidencesBeforeFiles,
-        evidencesAfter: arrayOfEvidencesAfterFiles,
-      });
-
-      return res.status(200).json({ success: true, report });
-    } catch (error) {
-      if (evidencesBefore) fs.unlinkSync(evidencesBefore.path);
-      if (evidencesAfter) fs.unlinkSync(evidencesAfter.path);
-      if (error && error.name === 'ValidationError') {
-        return res
-          .status(400)
-          .json({ success: false, message: 'Input fields validation error' });
-      }
-
-      return res.status(400).json({ success: false, message: error });
-    }
-  });
-});
-
-// @route   POST /api/user/priority-report/:id
-// @desc    Update priority/issue report
-// @access  Private
-router.post('/priority-report/:id', async (req, res) => {
-  // Ensure the directory exists
-  const uploadDir = path.join('public', 'issues');
-  if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-  }
-
-  const formData = formidable({
-    uploadDir: './public/issues',
-    keepExtensions: true,
-    multiples: true,
-  });
-
-  console.log(req.params.id);
-
-  if (!req.params.id) return;
-
-  const report = await PrioritiesReport.findOne({ _id: req.params.id });
-
-  if (!report)
-    return res
-      .status(400)
-      .json({ success: false, message: 'Unable to update report' });
-
-  formData.parse(req, async (error, fields, files) => {
-    const { evidencesBefore, evidencesAfter } = files;
-    try {
-      if (error) throw 'Unable to upload image!';
-
-      let arrayOfEvidencesBeforeFiles = [],
-        arrayOfEvidencesAfterFiles = [];
-
-      if (evidencesBefore) {
-        Object.keys(evidencesBefore).forEach((value) => {
-          if (evidencesBefore[value] && evidencesBefore[value].path) {
-            const path = evidencesBefore[value].path.split('public')[1];
-            arrayOfEvidencesBeforeFiles.push(path);
-          }
-          if (value === 'path') {
-            const path = evidencesBefore[value].split('public')[1];
-            arrayOfEvidencesBeforeFiles.filter((item) => {
-              if (item !== path) arrayOfEvidencesBeforeFiles.push(path);
-            });
-          }
-        });
-      }
-
-      if (evidencesAfter) {
-        Object.keys(evidencesAfter).forEach((value) => {
-          if (evidencesAfter[value] && evidencesAfter[value].path) {
-            const path = evidencesAfter[value].path.split('public')[1];
-            arrayOfEvidencesAfterFiles.push(path);
-          }
-          if (value === 'path') {
-            const path = evidencesAfter[value].split('public')[1];
-            arrayOfEvidencesAfterFiles.filter((item) => {
-              if (item !== path) arrayOfEvidencesAfterFiles.push(path);
-            });
-          }
-        });
-      }
-
-      console.log(arrayOfEvidencesBeforeFiles);
-      console.log(arrayOfEvidencesAfterFiles);
-
-      let updatedEvidencesBefore = [
-        ...report.evidencesBefore,
-        ...arrayOfEvidencesBeforeFiles,
-      ];
-      let updatedEvidencesAfter = [
-        ...report.evidencesAfter,
-        ...arrayOfEvidencesAfterFiles,
-      ];
-
-      // Update db
-      const updateReport = await PrioritiesReport.findOneAndUpdate(
-        { _id: req.params.id },
+    if (requestType === 'issues') {
+      const updateIssue = await AuditReport.findOneAndUpdate(
+        { _id: id },
+        updateObj,
         {
-          ...fields,
-          evidencesBefore: updatedEvidencesBefore,
-          evidencesAfter: updatedEvidencesAfter,
-          $push: {
-            updatedBy: {
-              name: req.user.name,
-              id: req.user.id,
-              time: new Date(),
-            },
-          },
+          new: true,
         },
-        { new: true },
       );
 
-      if (!updateReport) throw 'Unable to update the report';
+      if (!updateIssue) throw 'Unable to delete image';
 
-      return res.status(200).json({ success: true, report: updateReport });
-    } catch (error) {
-      if (evidencesBefore) fs.unlinkSync(evidencesBefore.path);
-      if (evidencesAfter) fs.unlinkSync(evidencesAfter.path);
-      if (error && error.name === 'ValidationError') {
-        return res
-          .status(400)
-          .json({ success: false, message: 'Input fields validation error' });
-      }
-
-      return res.status(400).json({ success: false, message: error });
+      fs.unlinkSync(`./public${url}`);
     }
-  });
+
+    if (requestType === 'initiatives') {
+      const updateIssue = await Initiatives.findOneAndUpdate(
+        { _id: id },
+        updateObj,
+        {
+          new: true,
+        },
+      );
+
+      if (!updateIssue) throw 'Unable to delete image';
+
+      fs.unlinkSync(`./public${url}`);
+    }
+
+    return res
+      .status(200)
+      .json({ success: true, message: 'Image deleted successfully' });
+  } catch (error) {
+    return res.status(400).json({ success: false, message: error });
+  }
 });
 
 // @route   GET /api/user/csv/priorities-reports
@@ -1163,59 +1030,6 @@ router.post('/csv/initiatives-reports', async (req, res) => {
       success: false,
       message: 'Unable to fetch reports, try later',
     });
-  }
-});
-
-// @route   POST /api/user/delete-image
-// @desc    Delete saved image
-// @access  Private
-router.post('/delete-image', async (req, res) => {
-  const { requestType, imageType, id, url } = req.body;
-
-  try {
-    if (!requestType || !imageType || !id || !url)
-      throw 'Request type, image type, ID and URL is required';
-
-    let updateObj = {};
-
-    if (imageType === 'evidenceBefore')
-      updateObj = { $pull: { evidencesBefore: url } };
-    if (imageType === 'evidenceAfter')
-      updateObj = { $pull: { evidencesAfter: url } };
-
-    if (requestType === 'issues') {
-      const updateIssue = await PrioritiesReport.findOneAndUpdate(
-        { _id: id },
-        updateObj,
-        {
-          new: true,
-        },
-      );
-
-      if (!updateIssue) throw 'Unable to delete image';
-
-      fs.unlinkSync(`./public${url}`);
-    }
-
-    if (requestType === 'initiatives') {
-      const updateIssue = await Initiatives.findOneAndUpdate(
-        { _id: id },
-        updateObj,
-        {
-          new: true,
-        },
-      );
-
-      if (!updateIssue) throw 'Unable to delete image';
-
-      fs.unlinkSync(`./public${url}`);
-    }
-
-    return res
-      .status(200)
-      .json({ success: true, message: 'Image deleted successfully' });
-  } catch (error) {
-    return res.status(400).json({ success: false, message: error });
   }
 });
 
