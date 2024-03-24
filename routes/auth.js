@@ -17,7 +17,7 @@ router.get('/test', async (req, res) =>
   res.status(200).json({ message: 'Test route working' }),
 );
 
-// @route   GET /api/auth/user/signup
+// @route   POST /api/auth/user/signup
 // @desc    user Signup
 // @access  Public
 router.post('/user/signup', validateSignupRequest, async (req, res) => {
@@ -57,7 +57,7 @@ router.post('/user/signup', validateSignupRequest, async (req, res) => {
   }
 });
 
-// @route   GET /api/auth/user/login
+// @route   POST /api/auth/user/login
 // @desc    User Login
 // @access  Public
 router.post('/user/login', validateLoginRequest, async (req, res) => {

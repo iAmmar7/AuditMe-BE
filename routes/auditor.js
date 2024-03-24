@@ -11,6 +11,7 @@ const Initiatives = require('../db/models/Initiatives');
 
 // Load utils
 const compressImage = require('../utils/compressImage');
+const AuditReport = require('../db/models/AuditReport');
 
 // @route   GET /api/auditor/test
 // @desc    Test auditor rooutes
@@ -62,22 +63,10 @@ router.post('/raise-issue', async (req, res) => {
         compressImage(`./public/${element}`);
       });
 
-      // Get the most recent report for the ID
-      const recentReport = await PrioritiesReport.find({})
-        .select('id')
-        .lean()
-        .sort({ createdAt: -1 })
-        .limit(1);
-
       // Save the report
-      const report = await PrioritiesReport.create({
+      const report = await AuditReport.create({
         ...fields,
         user: req.user.id,
-        id: recentReport && recentReport[0] && recentReport[0].id + 1,
-        week:
-          moment(fields.date).week() -
-          moment(fields.date).add(0, 'month').startOf('month').week() +
-          1,
         isPrioritized: fields.priority === 'Priority',
         evidencesBefore: arrayOfEvidences,
       });

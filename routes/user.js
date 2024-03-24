@@ -14,6 +14,23 @@ const User = require('../db/models/User');
 // Load utils
 const compressImage = require('../utils/compressImage');
 
+// @route   GET /api/user
+// @desc    Fetch current user details
+// @access  Public
+router.get('/', async (req, res) => {
+  try {
+    return res.status(200).json({
+      success: true,
+      user: req.user,
+    });
+  } catch (error) {
+    return res.status(400).json({
+      success: false,
+      errors: error,
+    });
+  }
+});
+
 // @route   GET /api/user/audit-report
 // @desc    Submit audit report
 // @access  Private

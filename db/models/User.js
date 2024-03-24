@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
-const Schema = mongoose.Schema;
+const { userRoles } = require('../../utils/constants');
 
-const UserSchema = new Schema(
+const UserSchema = new mongoose.Schema(
   {
     name: {
       type: String,
@@ -18,7 +18,7 @@ const UserSchema = new Schema(
     role: {
       type: String,
       required: true,
-      enum: ['auditor', 'sm', 'admin'],
+      enum: userRoles,
     },
     profile_picture: {
       type: String,
