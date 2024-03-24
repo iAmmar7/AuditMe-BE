@@ -222,15 +222,13 @@ router.post('/audit-reports', async (req, res) => {
     pageSize,
     id,
     date,
-    user,
+    auditor,
     status,
     type,
     region,
-    processSpecialist,
-    regionalManager,
-    areaManager,
+    stationManager,
     dateIdentified,
-    stationNumber,
+    station,
   } = params;
   let { dateSorter, dateIdentifiedSorter, daysOpenSorter } = sorter;
   let { statusFilter, typeFilter, regionFilter } = filter;
@@ -251,23 +249,18 @@ router.post('/audit-reports', async (req, res) => {
           $lte: moment(new Date(date[1])).utcOffset(0).endOf('day').toDate(),
         },
       });
-    if (user) matchQuery.push({ 'user.name': { $regex: user, $options: 'i' } });
+    if (auditor)
+      matchQuery.push({ 'auditor.name': { $regex: auditor, $options: 'i' } });
+    if (stationManager)
+      matchQuery.push({
+        'stationManager.name': { $regex: stationManager, $options: 'i' },
+      });
     if (status) matchQuery.push({ status: { $regex: status, $options: 'i' } });
     if (type) matchQuery.push({ type: { $regex: type, $options: 'i' } });
     if (region) matchQuery.push({ region: { $regex: region, $options: 'i' } });
-    if (processSpecialist)
+    if (station)
       matchQuery.push({
-        processSpecialist: { $regex: processSpecialist, $options: 'i' },
-      });
-    if (regionalManager)
-      matchQuery.push({
-        regionalManager: { $regex: regionalManager, $options: 'i' },
-      });
-    if (areaManager)
-      matchQuery.push({ areaManager: { $regex: areaManager, $options: 'i' } });
-    if (stationNumber)
-      matchQuery.push({
-        stationNumber: { $regex: stationNumber, $options: 'i' },
+        station: { $regex: station, $options: 'i' },
       });
     if (dateIdentified)
       matchQuery.push({
@@ -451,6 +444,7 @@ router.post('/audit-reports', async (req, res) => {
       totalReports: reportsCount.length < 1 ? 0 : reportsCount[0].count,
     });
   } catch (error) {
+    console.log('error', error);
     return res.status(400).json({
       success: false,
       message: 'Unable to fetch reports, reload',
