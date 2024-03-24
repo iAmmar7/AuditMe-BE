@@ -17,10 +17,10 @@ router.get('/test', async (req, res) =>
   res.status(200).json({ message: 'Test route working' }),
 );
 
-// @route   POST /api/auth/user/signup
+// @route   POST /api/auth/signup
 // @desc    user Signup
 // @access  Public
-router.post('/user/signup', validateSignupRequest, async (req, res) => {
+router.post('/signup', validateSignupRequest, async (req, res) => {
   const { name, email, password, role } = req.body;
 
   const user = await User.findOne({ email });
@@ -57,10 +57,10 @@ router.post('/user/signup', validateSignupRequest, async (req, res) => {
   }
 });
 
-// @route   POST /api/auth/user/login
+// @route   POST /api/auth/login
 // @desc    User Login
 // @access  Public
-router.post('/user/login', validateLoginRequest, async (req, res) => {
+router.post('/login', validateLoginRequest, async (req, res) => {
   const { email, password } = req.body;
 
   const user = await User.findOne({ email });
@@ -99,7 +99,7 @@ router.post('/user/login', validateLoginRequest, async (req, res) => {
         (err, token) => {
           res.json({
             success: true,
-            token: 'Bearer ' + token,
+            token: token,
             user: payload,
           });
         },

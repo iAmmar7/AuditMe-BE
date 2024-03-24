@@ -31,6 +31,187 @@ router.get('/', async (req, res) => {
   }
 });
 
+// @route   POST /api/user/activity
+// @desc    POST update user activity
+// @access  Private
+router.post('/activity', async (req, res) => {
+  try {
+    const user = await User.findOneAndUpdate(
+      { _id: req.user.id },
+      { recentActivity: new Date() },
+    );
+    return res.json({ success: true, user });
+  } catch (error) {
+    return res.json({ success: false, errors: error });
+  }
+});
+
+// @route   GET /api/user/roles
+// @desc    List down all users by role
+// @access  Private
+router.get('/roles', async (req, res) => {
+  let { role } = req.query;
+
+  try {
+    const users = await User.find({ role });
+
+    return res.status(200).json({ success: true, users });
+  } catch (error) {
+    return res.status(400).json({ success: false, error: error });
+  }
+});
+
+// @route   GET /api/user/report-chart
+// @desc    GET region vise report data
+// @access  Private
+router.get('/report-chart', async (req, res) => {
+  const month =
+    req.query.month && req.query.month !== 'undefined'
+      ? req.query.month
+      : 'allTime';
+
+  try {
+    const regionStatusStats = await PrioritiesReport.aggregate([
+      {
+        $match:
+          month === 'allTime'
+            ? {}
+            : {
+                date: {
+                  $gte: moment(month, 'YYYY-MM-DD')
+                    .utcOffset(0)
+                    .startOf('month')
+                    .startOf('day')
+                    .toDate(),
+                  $lte: moment(month, 'YYYY-MM-DD')
+                    .utcOffset(0)
+                    .endOf('month')
+                    .endOf('day')
+                    .toDate(),
+                },
+              },
+      },
+      {
+        $group: {
+          _id: {
+            status: '$status',
+            region: '$region',
+          },
+          count: { $sum: 1 },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          region: '$_id.region',
+          status: '$_id.status',
+          count: { $ifNull: ['$count', 0] },
+        },
+      },
+    ]);
+
+    const regionTypeStats = await PrioritiesReport.aggregate([
+      {
+        $match:
+          month === 'allTime'
+            ? {}
+            : {
+                date: {
+                  $gte: moment(month, 'YYYY-MM-DD')
+                    .utcOffset(0)
+                    .startOf('month')
+                    .startOf('day')
+                    .toDate(),
+                  $lte: moment(month, 'YYYY-MM-DD')
+                    .utcOffset(0)
+                    .endOf('month')
+                    .endOf('day')
+                    .toDate(),
+                },
+              },
+      },
+      {
+        $group: {
+          _id: {
+            status: '$status',
+            region: '$region',
+            type: '$type',
+          },
+          count: { $sum: 1 },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          type: '$_id.type',
+          region: '$_id.region',
+          status: '$_id.status',
+          count: { $ifNull: ['$count', 0] },
+        },
+      },
+    ]);
+
+    // Manipulate data for chart
+    for (let i of regionStatusStats) {
+      for (let j of regionTypeStats) {
+        if (i.region === j.region && i.status === j.status) {
+          i[j.type] = j.count;
+        }
+      }
+    }
+
+    const overallStats = await PrioritiesReport.aggregate([
+      {
+        $match:
+          month === 'allTime'
+            ? {}
+            : {
+                date: {
+                  $gte: moment(month, 'YYYY-MM-DD')
+                    .utcOffset(0)
+                    .startOf('month')
+                    .startOf('day')
+                    .toDate(),
+                  $lte: moment(month, 'YYYY-MM-DD')
+                    .utcOffset(0)
+                    .endOf('month')
+                    .endOf('day')
+                    .toDate(),
+                },
+              },
+      },
+      {
+        $group: {
+          _id: '$status',
+          count: { $sum: 1 },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          status: '$_id',
+          count: { $ifNull: ['$count', 0] },
+        },
+      },
+    ]);
+
+    let total = 0;
+    for (let i in overallStats) total += overallStats[i].count;
+
+    return res.status(200).json({
+      success: true,
+      regionStats: regionStatusStats,
+      overallStats,
+      total,
+    });
+  } catch (error) {
+    return res.status(400).json({
+      success: false,
+      message: error,
+    });
+  }
+});
+
 // @route   GET /api/user/audit-report
 // @desc    Submit audit report
 // @access  Private
@@ -1006,154 +1187,6 @@ router.post('/csv/initiatives-reports', async (req, res) => {
   }
 });
 
-// @route   GET /api/user/report-chart
-// @desc    GET region vise report data
-// @access  Private
-router.get('/report-chart', async (req, res) => {
-  const month = req.query.month ? req.query.month : 'allTime';
-
-  try {
-    const regionStatusStats = await PrioritiesReport.aggregate([
-      {
-        $match:
-          month === 'allTime'
-            ? {}
-            : {
-                date: {
-                  $gte: moment(month, 'YYYY-MM-DD')
-                    .utcOffset(0)
-                    .startOf('month')
-                    .startOf('day')
-                    .toDate(),
-                  $lte: moment(month, 'YYYY-MM-DD')
-                    .utcOffset(0)
-                    .endOf('month')
-                    .endOf('day')
-                    .toDate(),
-                },
-              },
-      },
-      {
-        $group: {
-          _id: {
-            status: '$status',
-            region: '$region',
-          },
-          count: { $sum: 1 },
-        },
-      },
-      {
-        $project: {
-          _id: 0,
-          region: '$_id.region',
-          status: '$_id.status',
-          count: { $ifNull: ['$count', 0] },
-        },
-      },
-    ]);
-
-    const regionTypeStats = await PrioritiesReport.aggregate([
-      {
-        $match:
-          month === 'allTime'
-            ? {}
-            : {
-                date: {
-                  $gte: moment(month, 'YYYY-MM-DD')
-                    .utcOffset(0)
-                    .startOf('month')
-                    .startOf('day')
-                    .toDate(),
-                  $lte: moment(month, 'YYYY-MM-DD')
-                    .utcOffset(0)
-                    .endOf('month')
-                    .endOf('day')
-                    .toDate(),
-                },
-              },
-      },
-      {
-        $group: {
-          _id: {
-            status: '$status',
-            region: '$region',
-            type: '$type',
-          },
-          count: { $sum: 1 },
-        },
-      },
-      {
-        $project: {
-          _id: 0,
-          type: '$_id.type',
-          region: '$_id.region',
-          status: '$_id.status',
-          count: { $ifNull: ['$count', 0] },
-        },
-      },
-    ]);
-
-    // Manipulate data for chart
-    for (let i of regionStatusStats) {
-      for (let j of regionTypeStats) {
-        if (i.region === j.region && i.status === j.status) {
-          i[j.type] = j.count;
-        }
-      }
-    }
-
-    const overallStats = await PrioritiesReport.aggregate([
-      {
-        $match:
-          month === 'allTime'
-            ? {}
-            : {
-                date: {
-                  $gte: moment(month, 'YYYY-MM-DD')
-                    .utcOffset(0)
-                    .startOf('month')
-                    .startOf('day')
-                    .toDate(),
-                  $lte: moment(month, 'YYYY-MM-DD')
-                    .utcOffset(0)
-                    .endOf('month')
-                    .endOf('day')
-                    .toDate(),
-                },
-              },
-      },
-      {
-        $group: {
-          _id: '$status',
-          count: { $sum: 1 },
-        },
-      },
-      {
-        $project: {
-          _id: 0,
-          status: '$_id',
-          count: { $ifNull: ['$count', 0] },
-        },
-      },
-    ]);
-
-    let total = 0;
-    for (let i in overallStats) total += overallStats[i].count;
-
-    return res.status(200).json({
-      success: true,
-      regionStats: regionStatusStats,
-      overallStats,
-      total,
-    });
-  } catch (error) {
-    return res.status(400).json({
-      success: false,
-      message: error,
-    });
-  }
-});
-
 // @route   POST /api/user/delete-image
 // @desc    Delete saved image
 // @access  Private
@@ -1400,21 +1433,6 @@ router.delete('/delete-user/:id', async (req, res) => {
   }
 });
 
-// @route   POST /api/user/update-activity
-// @desc    POST update user activity
-// @access  Private
-router.post('/update-activity', async (req, res) => {
-  try {
-    const user = await User.findOneAndUpdate(
-      { _id: req.user.id },
-      { recentActivity: new Date() },
-    );
-    return res.json({ success: true, user });
-  } catch (error) {
-    return res.json({ success: false, errors: error });
-  }
-});
-
 // @route   GET /api/user/image-resoze
 // @desc    GET update image sizes
 // @access  Private
@@ -1430,21 +1448,6 @@ router.get('/image-resize', async (req, res) => {
   });
 
   return res.json({ message: 'Image size decresing' });
-});
-
-// @route   GET /api/user/roles
-// @desc    List down all users by role
-// @access  Private
-router.get('/roles', async (req, res) => {
-  let { role } = req.query;
-
-  try {
-    const users = await User.find({ role });
-
-    return res.status(200).json({ success: true, users });
-  } catch (error) {
-    return res.status(400).json({ success: false, error: error });
-  }
 });
 
 module.exports = router;

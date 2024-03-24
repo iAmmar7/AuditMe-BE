@@ -17,9 +17,8 @@ if (process.env.NODE_ENV === 'production') {
 
 // Load Routes
 const authRoutes = require('./routes/auth');
-const adminRoutes = require('./routes/admin');
 const userRoutes = require('./routes/user');
-const auditorRoutes = require('./routes/auditor');
+const auditRoutes = require('./routes/audit');
 const rmRoutes = require('./routes/rm');
 const amRoutes = require('./routes/am');
 
@@ -43,8 +42,13 @@ require('./config/passport')(passport);
 
 // Use Routes
 app.use('/api/auth', authRoutes);
-app.use('/api/user', userAuth, userRole(['auditor', 'rm', 'am', 'sm', 'viewer']), userRoutes);
-app.use('/api/auditor', userAuth, userRole(['auditor', 'sm']), auditorRoutes);
+app.use(
+  '/api/user',
+  userAuth,
+  userRole(['auditor', 'sm', 'viewer']),
+  userRoutes,
+);
+app.use('/api/auditor', userAuth, userRole(['auditor']), auditRoutes);
 app.use('/api/rm', userAuth, userRole(['rm']), rmRoutes);
 app.use('/api/am', userAuth, userRole(['am']), amRoutes);
 // app.use('/api/admin', userAuth, userRole(['admin']), adminRoutes);

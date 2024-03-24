@@ -6,7 +6,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "start:prod": "pm2 start server.js --name audit-rail"
   },
   "license": "ISC",
   "dependencies": {

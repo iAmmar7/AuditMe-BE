@@ -12,26 +12,25 @@ const Initiatives = require('../db/models/Initiatives');
 // Load utils
 const compressImage = require('../utils/compressImage');
 const AuditReport = require('../db/models/AuditReport');
+const { upsertDir } = require('../utils/upsertDir');
 
-// @route   GET /api/auditor/test
+// @route   GET /api/audit/test
 // @desc    Test auditor rooutes
 // @access  Private
 router.get('/test', (req, res) => {
   res.json({ message: 'Auditor route works' });
 });
 
-// @route   POST /api/auditor/raise issue
-// @desc    Submit priorities/issue report
+// @route   POST /api/audit/report
+// @desc    Submit audit report
 // @access  Private
-router.post('/raise-issue', async (req, res) => {
+router.post('/report', async (req, res) => {
   // Ensure the directory exists
-  const uploadDir = path.join('public', 'issues');
-  if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-  }
+  const dirName = 'issues';
+  upsertDir(dirName);
 
   const formData = formidable({
-    uploadDir: './public/issues',
+    uploadDir: `./public/${dirName}`,
     keepExtensions: true,
     multiples: true,
   });
@@ -74,6 +73,108 @@ router.post('/raise-issue', async (req, res) => {
       return res.status(200).json({ success: true, report });
     } catch (error) {
       if (evidences) fs.unlinkSync(evidences.path);
+      if (error && error.name === 'ValidationError') {
+        return res
+          .status(400)
+          .json({ success: false, message: 'Input fields validation error' });
+      }
+
+      return res.status(400).json({ success: false, message: error });
+    }
+  });
+});
+
+// @route   POST /api/audit/initiave
+// @desc    Submit initiative report
+// @access  Private
+router.post('/initiative', async (req, res) => {
+  // Ensure the directory exists
+  const uploadDir = path.join('public', 'initiatives');
+  if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+  }
+
+  const formData = formidable({
+    uploadDir: './public/initiatives',
+    keepExtensions: true,
+    multiples: true,
+  });
+
+  formData.parse(req, async (error, fields, files) => {
+    const { evidencesBefore, evidencesAfter } = files;
+
+    try {
+      if (error) throw 'Unable to upload image!';
+
+      let arrayOfEvidencesBefore = [],
+        arrayOfEvidencesAfter = [];
+
+      if (evidencesBefore) {
+        Object.keys(evidencesBefore).forEach((value) => {
+          if (evidencesBefore[value] && evidencesBefore[value].path) {
+            const path = evidencesBefore[value].path.split('public')[1];
+            arrayOfEvidencesBefore.push(path);
+          }
+          if (value === 'path') {
+            const path = evidencesBefore[value].split('public')[1];
+            arrayOfEvidencesBefore.filter((item) => {
+              if (item !== path) arrayOfEvidencesBefore.push(path);
+            });
+          }
+        });
+      }
+
+      if (evidencesAfter) {
+        Object.keys(evidencesAfter).forEach((value) => {
+          if (evidencesAfter[value] && evidencesAfter[value].path) {
+            const path = evidencesAfter[value].path.split('public')[1];
+            arrayOfEvidencesAfter.push(path);
+          }
+          if (value === 'path') {
+            const path = evidencesAfter[value].split('public')[1];
+            arrayOfEvidencesAfter.filter((item) => {
+              if (item !== path) arrayOfEvidencesAfter.push(path);
+            });
+          }
+        });
+      }
+
+      console.log(arrayOfEvidencesBefore, arrayOfEvidencesAfter);
+
+      // Check arrayOfEvidencesBefore image size and reduce if greater than 1mb
+      arrayOfEvidencesBefore.forEach(async (element) => {
+        compressImage(`./public/${element}`);
+      });
+
+      // Check arrayOfEvidencesAfter image size and reduce if greater than 1mb
+      arrayOfEvidencesAfter.forEach(async (element) => {
+        compressImage(`./public/${element}`);
+      });
+
+      // Get the most recent initiative for the ID
+      const recentReport = await Initiatives.find({})
+        .select('id')
+        .lean()
+        .sort({ createdAt: -1 })
+        .limit(1);
+
+      // Save the initiative
+      const report = await Initiatives.create({
+        ...fields,
+        user: req.user.id,
+        id: recentReport && recentReport[0] && recentReport[0].id + 1,
+        week:
+          moment(fields.date).isoWeek() -
+          moment(fields.date).startOf('month').isoWeek() +
+          1,
+        evidencesBefore: arrayOfEvidencesBefore,
+        evidencesAfter: arrayOfEvidencesAfter,
+      });
+
+      return res.status(200).json({ success: true, report });
+    } catch (error) {
+      if (evidencesBefore) fs.unlinkSync(evidencesBefore.path);
+      if (evidencesAfter) fs.unlinkSync(evidencesAfter.path);
       if (error && error.name === 'ValidationError') {
         return res
           .status(400)
@@ -197,7 +298,7 @@ router.post('/priority-report/:id', async (req, res) => {
   });
 });
 
-// @route   GET /api/auditor/cancel-issue/:id
+// @route   GET /api/audit/cancel-issue/:id
 // @desc    Cancel issue report
 // @access  Private
 router.get('/cancel-issue/:id', async (req, res) => {
@@ -226,7 +327,7 @@ router.get('/cancel-issue/:id', async (req, res) => {
   }
 });
 
-// @route   POST /api/auditor/update-issue/:id
+// @route   POST /api/audit/update-issue/:id
 // @desc    Update issue report
 // @access  Private
 router.post('/update-issue/:id', async (req, res) => {
@@ -323,109 +424,7 @@ router.post('/update-issue/:id', async (req, res) => {
   });
 });
 
-// @route   POST /api/auditor/initiave
-// @desc    Submit initiative report
-// @access  Private
-router.post('/initiative', async (req, res) => {
-  // Ensure the directory exists
-  const uploadDir = path.join('public', 'initiatives');
-  if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-  }
-
-  const formData = formidable({
-    uploadDir: './public/initiatives',
-    keepExtensions: true,
-    multiples: true,
-  });
-
-  formData.parse(req, async (error, fields, files) => {
-    const { evidencesBefore, evidencesAfter } = files;
-
-    try {
-      if (error) throw 'Unable to upload image!';
-
-      let arrayOfEvidencesBefore = [],
-        arrayOfEvidencesAfter = [];
-
-      if (evidencesBefore) {
-        Object.keys(evidencesBefore).forEach((value) => {
-          if (evidencesBefore[value] && evidencesBefore[value].path) {
-            const path = evidencesBefore[value].path.split('public')[1];
-            arrayOfEvidencesBefore.push(path);
-          }
-          if (value === 'path') {
-            const path = evidencesBefore[value].split('public')[1];
-            arrayOfEvidencesBefore.filter((item) => {
-              if (item !== path) arrayOfEvidencesBefore.push(path);
-            });
-          }
-        });
-      }
-
-      if (evidencesAfter) {
-        Object.keys(evidencesAfter).forEach((value) => {
-          if (evidencesAfter[value] && evidencesAfter[value].path) {
-            const path = evidencesAfter[value].path.split('public')[1];
-            arrayOfEvidencesAfter.push(path);
-          }
-          if (value === 'path') {
-            const path = evidencesAfter[value].split('public')[1];
-            arrayOfEvidencesAfter.filter((item) => {
-              if (item !== path) arrayOfEvidencesAfter.push(path);
-            });
-          }
-        });
-      }
-
-      console.log(arrayOfEvidencesBefore, arrayOfEvidencesAfter);
-
-      // Check arrayOfEvidencesBefore image size and reduce if greater than 1mb
-      arrayOfEvidencesBefore.forEach(async (element) => {
-        compressImage(`./public/${element}`);
-      });
-
-      // Check arrayOfEvidencesAfter image size and reduce if greater than 1mb
-      arrayOfEvidencesAfter.forEach(async (element) => {
-        compressImage(`./public/${element}`);
-      });
-
-      // Get the most recent initiative for the ID
-      const recentReport = await Initiatives.find({})
-        .select('id')
-        .lean()
-        .sort({ createdAt: -1 })
-        .limit(1);
-
-      // Save the initiative
-      const report = await Initiatives.create({
-        ...fields,
-        user: req.user.id,
-        id: recentReport && recentReport[0] && recentReport[0].id + 1,
-        week:
-          moment(fields.date).isoWeek() -
-          moment(fields.date).startOf('month').isoWeek() +
-          1,
-        evidencesBefore: arrayOfEvidencesBefore,
-        evidencesAfter: arrayOfEvidencesAfter,
-      });
-
-      return res.status(200).json({ success: true, report });
-    } catch (error) {
-      if (evidencesBefore) fs.unlinkSync(evidencesBefore.path);
-      if (evidencesAfter) fs.unlinkSync(evidencesAfter.path);
-      if (error && error.name === 'ValidationError') {
-        return res
-          .status(400)
-          .json({ success: false, message: 'Input fields validation error' });
-      }
-
-      return res.status(400).json({ success: false, message: error });
-    }
-  });
-});
-
-// @route   POST /api/auditor/update-initiative/:id
+// @route   POST /api/audit/update-initiative/:id
 // @desc    Update initiative report
 // @access  Private
 router.post('/update-initiative/:id', async (req, res) => {
