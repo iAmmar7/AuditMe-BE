@@ -2,12 +2,12 @@ const mongoose = require('mongoose');
 const { customAlphabet } = require('nanoid');
 const { regions, issueType, issueStatus } = require('../../utils/constants');
 
-const nanoid = customAlphabet('1234567890abcdefghijklmnopqrstuvwxyz', 6);
+const nanoid = customAlphabet('1234567890abcdefghijklmnopqrstuvwxyz', 8);
 
 const AuditReportSchema = new mongoose.Schema(
   {
     id: {
-      type: Number,
+      type: String,
       unique: true,
       required: true,
       default: () => nanoid(),
@@ -36,7 +36,7 @@ const AuditReportSchema = new mongoose.Schema(
       required: true,
       enum: issueType,
     },
-    issueDetails: {
+    details: {
       type: String,
       required: true,
     },

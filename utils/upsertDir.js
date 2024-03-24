@@ -1,3 +1,6 @@
+const fs = require('fs');
+const path = require('path');
+
 const upsertDir = (dirName) => {
   // Ensure the directory exists
   const uploadDir = path.join('public', dirName);
