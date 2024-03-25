@@ -322,9 +322,9 @@ router.post('/audit-reports', async (req, res) => {
         $match:
           matchQuery.length > 0
             ? {
-                $and: [{ isPrioritized }, ...matchQuery],
+                $and: [...matchQuery],
               }
-            : { isPrioritized },
+            : {},
       },
       {
         $project: {
@@ -415,9 +415,9 @@ router.post('/audit-reports', async (req, res) => {
         $match:
           matchQuery.length > 0
             ? {
-                $and: [{ isPrioritized }, ...matchQuery],
+                $and: [...matchQuery],
               }
-            : { isPrioritized },
+            : {},
       },
       {
         $group: {
@@ -719,25 +719,22 @@ router.patch('/delete-image', async (req, res) => {
   }
 });
 
-// @route   GET /api/user/csv/priorities-reports
-// @desc    Get all priorities reports
+// @route   POST /api/user/csv/audit-reports
+// @desc    Get all audit reports
 // @access  Private
-router.post('/csv/priorities-reports', async (req, res) => {
+router.post('/csv/audit-reports', async (req, res) => {
   const {
     filters: {
       id,
       date,
-      user,
+      auditor,
       status,
       type,
       region,
-      processSpecialist,
-      areaManager,
-      regionalManager,
-      stationNumber,
+      stationManager,
+      station,
       dateIdentified,
     },
-    isPrioritized = true,
   } = req.body;
 
   const matchQuery = [];
@@ -749,24 +746,16 @@ router.post('/csv/priorities-reports', async (req, res) => {
         $lte: moment(new Date(date[1])).utcOffset(0).endOf('day').toDate(),
       },
     });
-  if (user) matchQuery.push({ 'user.name': { $regex: user, $options: 'i' } });
+  if (auditor)
+    matchQuery.push({ 'auditor.name': { $regex: auditor, $options: 'i' } });
   if (status) matchQuery.push({ status: { $regex: status, $options: 'i' } });
   if (type) matchQuery.push({ type: { $regex: type, $options: 'i' } });
   if (region) matchQuery.push({ region: { $regex: region, $options: 'i' } });
-  if (processSpecialist)
+  if (stationManager)
     matchQuery.push({
-      processSpecialist: { $regex: processSpecialist, $options: 'i' },
+      'stationManager.name': { $regex: stationManager, $options: 'i' },
     });
-  if (regionalManager)
-    matchQuery.push({
-      regionalManager: { $regex: regionalManager, $options: 'i' },
-    });
-  if (areaManager)
-    matchQuery.push({ areaManager: { $regex: areaManager, $options: 'i' } });
-  if (stationNumber)
-    matchQuery.push({
-      stationNumber: { $regex: stationNumber, $options: 'i' },
-    });
+  if (station) matchQuery.push({ station: { $regex: station, $options: 'i' } });
   if (dateIdentified)
     matchQuery.push({
       dateIdentified: {
@@ -782,23 +771,32 @@ router.post('/csv/priorities-reports', async (req, res) => {
     });
 
   try {
-    const reports = await PrioritiesReport.aggregate([
+    const reports = await AuditReport.aggregate([
       {
         $lookup: {
           from: User.collection.name,
-          localField: 'user',
+          localField: 'auditor',
           foreignField: '_id',
-          as: 'user',
+          as: 'auditor',
         },
       },
-      { $unwind: '$user' },
+      { $unwind: '$auditor' },
+      {
+        $lookup: {
+          from: User.collection.name,
+          localField: 'stationManager',
+          foreignField: '_id',
+          as: 'stationManager',
+        },
+      },
+      { $unwind: '$stationManager' },
       {
         $match:
           matchQuery.length > 0
             ? {
-                $and: [{ isPrioritized }, ...matchQuery],
+                $and: [...matchQuery],
               }
-            : { isPrioritized },
+            : {},
       },
       {
         $project: {
@@ -839,17 +837,16 @@ router.post('/csv/priorities-reports', async (req, res) => {
           _id: 0,
           id: '$root.id',
           date: '$root.date',
-          week: '$root.week',
-          userName: '$root.user.name',
+          auditorName: '$root.auditor.name',
+          auditorId: '$root.auditor._id',
+          stationManagerName: '$root.stationManager.name',
+          stationManagerId: '$root.stationManager._id',
           status: '$root.status',
           type: '$root.type',
           region: '$root.region',
-          regionalManager: '$root.regionalManager',
-          areaManager: '$root.areaManager',
-          issueDetails: '$root.issueDetails',
+          details: '$root.details',
           dateIdentified: '$root.dateIdentified',
-          stationNumber: '$root.stationNumber',
-          logNumber: '$root.logNumber',
+          station: '$root.station',
           daysOpen: '$daysOpen',
           resolvedByName: { $ifNull: ['$resolvedBy.name', null] },
           dateOfClosure: '$root.dateOfClosure',
@@ -867,19 +864,15 @@ router.post('/csv/priorities-reports', async (req, res) => {
       modifiedReport.push({
         id: reports[i].id,
         date: moment(reports[i].date).format('DD-MMM-YY'),
-        week: reports[i].week,
-        processSpecialist: reports[i].userName,
+        auditor: reports[i].auditorName,
+        stationManager: reports[i].stationManagerName,
         status: reports[i].status,
         type: reports[i].type,
         region: reports[i].region,
-        regionalManager: reports[i].regionalManager,
-        areaManager: reports[i].areaManager,
-        issueDetails:
-          reports[i].issueDetails &&
-          reports[i].issueDetails.trim().replace(/["]+/g, ''),
+        details:
+          reports[i].details && reports[i].details.trim().replace(/["]+/g, ''),
         dateIdentified: moment(reports[i].dateIdentified).format('DD-MMM-YY'),
-        stationNumber: reports[i].stationNumber,
-        logNumber: reports[i].logNumber,
+        station: reports[i].station,
         daysOpen: reports[i].status === 'Resolved' ? '-' : reports[i].daysOpen,
         daysResolved:
           reports[i].status === 'Resolved' ? reports[i].daysOpen : '-',
