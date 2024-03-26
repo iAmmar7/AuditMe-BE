@@ -1,7 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+
+const generateToken = (data) => {
+  return jwt.sign(data, process.env.PASSPORT_SECRET, { expiresIn: '7d' });
+};
 
 // Load Models
 const User = require('../db/models/User');
@@ -18,42 +21,35 @@ router.get('/test', async (req, res) =>
 );
 
 // @route   POST /api/auth/signup
-// @desc    user Signup
+// @desc    User Signup
 // @access  Public
 router.post('/signup', validateSignupRequest, async (req, res) => {
-  const { name, email, password, role } = req.body;
+  try {
+    const { name, email, password, role } = req.body;
 
-  const user = await User.findOne({ email });
-  if (user) {
-    return res.status(400).json({
-      success: false,
-      errors: [
-        {
-          location: 'body',
-          msg: 'Account already exist with this email',
-          path: 'email',
-          type: 'field',
-          value: email,
-        },
-      ],
-    });
-  } else {
+    const user = await User.findOne({ email });
+    if (user) {
+      return res.status(400).json({
+        success: false,
+        errors: [
+          {
+            location: 'body',
+            msg: 'Account already exist with this email',
+            path: 'email',
+            type: 'field',
+            value: email,
+          },
+        ],
+      });
+    }
+
     const newUser = new User({ name, email, password, role });
 
-    bcrypt.genSalt(10, (err, salt) => {
-      bcrypt.hash(newUser.password, salt, (err, hash) => {
-        if (err) throw err;
-        newUser.password = hash;
-        newUser
-          .save()
-          .then((user) => res.status(200).json({ success: true, user }))
-          .catch((err) =>
-            res
-              .status(500)
-              .json({ success: false, message: 'Unable to signup' }),
-          );
-      });
-    });
+    await newUser.save();
+
+    res.status(200).json({ success: true, user });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Unable to signup' });
   }
 });
 
@@ -61,49 +57,39 @@ router.post('/signup', validateSignupRequest, async (req, res) => {
 // @desc    User Login
 // @access  Public
 router.post('/login', validateLoginRequest, async (req, res) => {
-  const { email, password } = req.body;
+  try {
+    const { email, password } = req.body;
 
-  const user = await User.findOne({ email });
+    const user = await User.findOne({ email });
 
-  if (!user) {
-    return res.status(404).json({
-      success: false,
-      errors: [
-        {
-          location: 'body',
-          msg: 'Email not found',
-          path: 'email',
-          type: 'field',
-          value: email,
-        },
-      ],
-    });
-  }
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        errors: [
+          {
+            location: 'body',
+            msg: 'Email not found',
+            path: 'email',
+            type: 'field',
+            value: email,
+          },
+        ],
+      });
+    }
 
-  // Check for Password
-  bcrypt.compare(password, user.password).then((isMatch) => {
-    if (isMatch) {
+    if (await user.comparePassword(password)) {
       const payload = {
         id: user._id,
         name: user.name,
         email: user.email,
         role: user.role,
-        isAdmin: user.isAdmin,
       };
-
-      // Sign Token
-      jwt.sign(
-        payload,
-        process.env.PASSPORT_SECRET,
-        { expiresIn: '7d' },
-        (err, token) => {
-          res.json({
-            success: true,
-            token: token,
-            user: payload,
-          });
-        },
-      );
+      const token = generateToken(payload);
+      return res.json({
+        success: true,
+        token: token,
+        user: payload,
+      });
     } else {
       return res.status(401).json({
         success: false,
@@ -118,7 +104,9 @@ router.post('/login', validateLoginRequest, async (req, res) => {
         ],
       });
     }
-  });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Unable to login' });
+  }
 });
 
 module.exports = router;

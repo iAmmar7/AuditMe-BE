@@ -31,10 +31,10 @@ router.get('/', async (req, res) => {
   }
 });
 
-// @route   POST /api/user/activity
+// @route   PATCH /api/user/activity
 // @desc    Update user activity
 // @access  Private
-router.post('/activity', async (req, res) => {
+router.patch('/activity', async (req, res) => {
   try {
     const user = await User.findOneAndUpdate(
       { _id: req.user.id },
@@ -405,12 +405,12 @@ router.post('/audit-reports', async (req, res) => {
       {
         $lookup: {
           from: User.collection.name,
-          localField: 'user',
+          localField: 'auditor',
           foreignField: '_id',
-          as: 'user',
+          as: 'auditor',
         },
       },
-      { $unwind: '$user' },
+      { $unwind: '$auditor' },
       {
         $match:
           matchQuery.length > 0
@@ -457,21 +457,8 @@ router.post('/audit-reports', async (req, res) => {
 // @access  Private
 router.post('/initiative-reports', async (req, res) => {
   const { params, sorter, filter } = req.body;
-  let {
-    current,
-    pageSize,
-    id,
-    date,
-    user,
-    status,
-    type,
-    region,
-    processSpecialist,
-    regionalManager,
-    areaManager,
-    dateIdentified,
-    stationNumber,
-  } = params;
+  let { current, pageSize, id, date, auditor, status, type, region, station } =
+    params;
   let { dateSorter, dateIdentifiedSorter, daysOpenSorter } = sorter;
   let { statusFilter, typeFilter, regionFilter } = filter;
 
@@ -491,37 +478,13 @@ router.post('/initiative-reports', async (req, res) => {
           $lte: moment(new Date(date[1])).utcOffset(0).endOf('day').toDate(),
         },
       });
-    if (user) matchQuery.push({ 'user.name': { $regex: user, $options: 'i' } });
+    if (auditor)
+      matchQuery.push({ 'auditor.name': { $regex: auditor, $options: 'i' } });
     if (status) matchQuery.push({ status: { $regex: status, $options: 'i' } });
     if (type) matchQuery.push({ type: { $regex: type, $options: 'i' } });
     if (region) matchQuery.push({ region: { $regex: region, $options: 'i' } });
-    if (processSpecialist)
-      matchQuery.push({
-        processSpecialist: { $regex: processSpecialist, $options: 'i' },
-      });
-    if (regionalManager)
-      matchQuery.push({
-        regionalManager: { $regex: regionalManager, $options: 'i' },
-      });
-    if (areaManager)
-      matchQuery.push({ areaManager: { $regex: areaManager, $options: 'i' } });
-    if (stationNumber)
-      matchQuery.push({
-        stationNumber: { $regex: stationNumber, $options: 'i' },
-      });
-    if (dateIdentified)
-      matchQuery.push({
-        dateIdentified: {
-          $gte: moment(new Date(dateIdentified[0]))
-            .utcOffset(0)
-            .startOf('day')
-            .toDate(),
-          $lte: moment(new Date(dateIdentified[1]))
-            .utcOffset(0)
-            .endOf('day')
-            .toDate(),
-        },
-      });
+    if (station)
+      matchQuery.push({ station: { $regex: station, $options: 'i' } });
 
     // Add sorter if exist in request
     let sortBy = { 'root.createdAt': -1 };
@@ -550,12 +513,12 @@ router.post('/initiative-reports', async (req, res) => {
       {
         $lookup: {
           from: User.collection.name,
-          localField: 'user',
+          localField: 'auditor',
           foreignField: '_id',
-          as: 'user',
+          as: 'auditor',
         },
       },
-      { $unwind: '$user' },
+      { $unwind: '$auditor' },
       {
         $match:
           matchQuery.length > 0
@@ -591,19 +554,14 @@ router.post('/initiative-reports', async (req, res) => {
           _id: '$_id',
           id: '$root.id',
           date: '$root.date',
-          week: '$root.week',
-          userName: '$root.user.name',
-          userId: '$root.user._id',
+          auditorName: '$root.auditor.name',
+          auditorId: '$root.auditor._id',
           type: '$root.type',
           region: '$root.region',
-          areaManager: '$root.areaManager',
-          regionalManager: '$root.regionalManager',
           details: '$root.details',
-          stationNumber: '$root.stationNumber',
+          station: '$root.station',
           evidencesBefore: '$root.evidencesBefore',
           evidencesAfter: '$root.evidencesAfter',
-          dateIdentified: '$root.dateIdentified',
-          actionTaken: '$root.actionTaken',
           createdAt: '$root.createdAt',
           updatedAt: '$root.updatedAt',
         },
@@ -620,12 +578,12 @@ router.post('/initiative-reports', async (req, res) => {
       {
         $lookup: {
           from: User.collection.name,
-          localField: 'user',
+          localField: 'auditor',
           foreignField: '_id',
-          as: 'user',
+          as: 'auditor',
         },
       },
-      { $unwind: '$user' },
+      { $unwind: '$auditor' },
       {
         $match:
           matchQuery.length > 0
@@ -1017,162 +975,6 @@ router.post('/csv/initiatives-reports', async (req, res) => {
       success: false,
       message: 'Unable to fetch reports, try later',
     });
-  }
-});
-
-// @route   POST /api/user/delete-initiative
-// @desc    Delete an initiative
-// @access  Private
-router.delete('/delete-initiative/:id', async (req, res) => {
-  try {
-    if (!req.user.isAdmin) throw 'You are not authorized';
-
-    const report = await Initiatives.findOne({ _id: req.params.id });
-
-    if (!report) throw 'Unable to find report';
-
-    if (report.evidencesBefore.length > 0) {
-      for (let url of report.evidencesBefore) {
-        fs.unlinkSync(`./public${url}`);
-      }
-    }
-
-    if (report.evidencesAfter.length > 0) {
-      for (let url of report.evidencesAfter) {
-        fs.unlinkSync(`./public${url}`);
-      }
-    }
-
-    const deleteIssue = await Initiatives.findOneAndRemove({
-      _id: req.params.id,
-    });
-
-    if (!deleteIssue) throw 'Unable to delete issue';
-
-    return res
-      .status(200)
-      .json({ success: true, message: 'Deleted successfully' });
-  } catch (error) {
-    return res.status(400).json({ success: false, message: error });
-  }
-});
-
-// @route   POST /api/user/all-users
-// @desc    List down all users
-// @access  Private
-router.post('/all-users', async (req, res) => {
-  let { current, pageSize, badgeNumber, name } = req.body.params;
-  let { nameSorter } = req.body.sorter;
-  let { roleFilter } = req.body.filter;
-
-  current = current ? current : 1;
-  pageSize = pageSize ? pageSize : 10;
-
-  const offset = +pageSize * (+current - 1);
-
-  let matchQuery = [];
-  let sorter = { createdAt: -1 };
-
-  if (badgeNumber)
-    matchQuery.push({ badgeNumber: { $regex: badgeNumber, $options: 'i' } });
-  if (name) matchQuery.push({ name: { $regex: name, $options: 'i' } });
-  if (roleFilter) matchQuery.push({ role: { $in: roleFilter } });
-
-  if (nameSorter === 'ascend') sorter = { name: -1 };
-  if (nameSorter === 'descend') sorter = { name: 1 };
-
-  try {
-    if (!req.user.isAdmin) throw 'Unauthorized';
-
-    const users = await User.find(
-      matchQuery.length > 0 ? { $and: matchQuery } : {},
-    )
-      .limit(pageSize)
-      .skip(offset)
-      .sort(sorter);
-
-    const userCount = await User.find(
-      matchQuery.length > 0 ? { $and: matchQuery } : {},
-    ).countDocuments();
-
-    if (!users) throw 'No user found';
-
-    return res.status(200).json({ success: true, users, total: userCount });
-  } catch (error) {
-    return res.status(400).json({ success: false, message: error });
-  }
-});
-
-// @route   POST /api/user/add-user
-// @desc    Add a user
-// @access  Private
-router.post('/add-user', async (req, res) => {
-  const { badgeNumber, name, password, userType } = req.body;
-
-  if (!req.user.isAdmin)
-    return res.status(400).json({ success: false, message: 'Unauthorized' });
-
-  const user = await User.findOne({ badgeNumber });
-
-  if (user)
-    return res.status(400).json({
-      success: false,
-      message: 'Account already exist with this Badge Number',
-    });
-
-  const newUser = await User.create({
-    name,
-    badgeNumber,
-    password,
-    role: userType,
-  });
-
-  if (!newUser)
-    return res.status(400).json({
-      success: false,
-      message: 'Unable to add user, please try later',
-    });
-
-  return res.status(200).json({ success: true, user: newUser });
-});
-
-// @route   POST /api/user/update-user/:id
-// @desc    Update a user
-// @access  Private
-router.post('/update-user/:id', async (req, res) => {
-  const { badgeNumber, name, password } = req.body;
-
-  try {
-    if (!req.user.isAdmin) throw 'Unauthorized';
-
-    const user = await User.findOneAndUpdate(
-      { _id: req.params.id },
-      { badgeNumber, name, password },
-      { new: true },
-    );
-
-    if (!user) throw 'Unable to update the user';
-
-    return res.status(200).json({ success: true, user });
-  } catch (error) {
-    return res.status(400).json({ success: false, message: error });
-  }
-});
-
-// @route   DELETE /api/user/delete-user/:id
-// @desc    Delete a user
-// @access  Private
-router.delete('/delete-user/:id', async (req, res) => {
-  try {
-    if (!req.user.isAdmin) throw 'Unauthorized';
-
-    const user = await User.findOneAndRemove({ _id: req.params.id });
-
-    if (!user) throw 'Unable to delete the user';
-
-    return res.status(200).json({ success: true, user });
-  } catch (error) {
-    return res.status(400).json({ success: false, message: error });
   }
 });
 

@@ -1,16 +1,20 @@
 const mongoose = require('mongoose');
+const { customAlphabet } = require('nanoid');
 const { regions, issueType } = require('../../utils/constants');
+
+const nanoid = customAlphabet('1234567890abcdefghijklmnopqrstuvwxyz', 8);
 
 const InitiativesSchema = new mongoose.Schema(
   {
     id: {
-      type: Number,
-      required: true,
+      type: String,
       unique: true,
+      required: true,
+      default: () => nanoid(),
     },
-    user: {
+    auditor: {
       type: mongoose.SchemaTypes.ObjectId,
-      ref: 'user',
+      ref: 'auditor',
       required: true,
     },
     date: {
@@ -21,11 +25,6 @@ const InitiativesSchema = new mongoose.Schema(
       type: String,
       required: true,
       enum: regions,
-    },
-    stationManager: {
-      type: mongoose.SchemaTypes.ObjectId,
-      ref: 'user',
-      required: true,
     },
     type: {
       type: String,

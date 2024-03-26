@@ -3,7 +3,6 @@ const path = require('path');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const dotenv = require('dotenv');
-const passport = require('passport');
 
 const app = express();
 
@@ -29,7 +28,6 @@ const { userAuth, userRole } = require('./middlewares');
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 app.use(cors());
-app.use(passport.initialize());
 
 // Serve images
 app.use(express.static(path.join(__dirname, '/public')));
@@ -37,18 +35,10 @@ app.use(express.static(path.join(__dirname, '/public')));
 // Connect to MongoDB
 require('./db/mongoose');
 
-// Passport Config
-require('./config/passport')(passport);
-
 // Use Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/user', userAuth, userRoutes);
-app.use(
-  '/api/auditor',
-  userAuth,
-  userRole(['auditor', 'admin']),
-  auditorRoutes,
-);
+app.use('/api/auditor', userAuth, auditorRoutes);
 app.use('/api/admin', userAuth, userRole(['admin']), adminRoutes);
 app.use('/api/sm', userAuth, userRole(['sm', 'admin']), smRoutes);
 
