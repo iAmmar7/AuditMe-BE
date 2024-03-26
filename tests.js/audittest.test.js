@@ -13,11 +13,12 @@ describe('Audit APIs', () => {
     expect(response.body.message).toBe('Auditor route works');
   });
 
-  // test('GET /cancel-issue/:id should respond with status code 200', async () => {
-  //   // Replace 'dummy-id' with a valid ID
-  //   const response = await request(app).get('/api/auditor/cancel-issue/dummy-id');
-  //   expect(response.status).toBe(200);
-  //   expect(response.body).toHaveProperty('success');
-  //   expect(response.body.success).toBe(true);
-  // });
+  describe('GET /cancel-issue/:id', () => {
+    test('should respond with status code 400 for invalid ID', async () => {
+      const response = await request(app).get('/api/auditor/cancel-issue/invalid-id');
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty('success');
+      expect(response.body.success).toBe(false);
+    });
+  });
 });
