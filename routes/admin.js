@@ -4,6 +4,8 @@ const router = express.Router();
 
 // Load Models
 const AuditReport = require('../db/models/AuditReport');
+const User = require('../db/models/User');
+const { validateSignupRequest } = require('../middlewares');
 
 // @route   DELETE /api/admin/audit-report
 // @desc    Delete audit report
@@ -79,10 +81,10 @@ router.delete('/initiative/:id', async (req, res) => {
 // @route   POST /api/admin/user
 // @desc    List down all users
 // @access  Private
-router.post('/user', async (req, res) => {
-  let { current, pageSize, badgeNumber, name } = req.body.params;
-  let { nameSorter } = req.body.sorter;
-  let { roleFilter } = req.body.filter;
+router.post('/users', async (req, res) => {
+  let { current, pageSize, name } = req.body?.params || {};
+  let { nameSorter } = req.body?.sorter || {};
+  let { roleFilter } = req.body?.filter || {};
 
   current = current ? current : 1;
   pageSize = pageSize ? pageSize : 10;
@@ -92,8 +94,6 @@ router.post('/user', async (req, res) => {
   let matchQuery = [];
   let sorter = { createdAt: -1 };
 
-  if (badgeNumber)
-    matchQuery.push({ badgeNumber: { $regex: badgeNumber, $options: 'i' } });
   if (name) matchQuery.push({ name: { $regex: name, $options: 'i' } });
   if (roleFilter) matchQuery.push({ role: { $in: roleFilter } });
 
@@ -101,8 +101,6 @@ router.post('/user', async (req, res) => {
   if (nameSorter === 'descend') sorter = { name: 1 };
 
   try {
-    if (!req.user.isAdmin) throw 'Unauthorized';
-
     const users = await User.find(
       matchQuery.length > 0 ? { $and: matchQuery } : {},
     )
@@ -125,55 +123,64 @@ router.post('/user', async (req, res) => {
 // @route   POST /api/admin/add-user
 // @desc    Add a user
 // @access  Private
-router.post('/user', async (req, res) => {
-  const { badgeNumber, name, password, userType } = req.body;
+router.post('/user', validateSignupRequest, async (req, res) => {
+  try {
+    const { email, name, password, role } = req.body;
 
-  if (!req.user.isAdmin)
-    return res.status(400).json({ success: false, message: 'Unauthorized' });
+    const user = await User.findOne({ email });
 
-  const user = await User.findOne({ badgeNumber });
+    if (user) {
+      return res.status(400).json({
+        success: false,
+        errors: [
+          {
+            location: 'body',
+            msg: 'Account already exist with this email',
+            path: 'email',
+            type: 'field',
+            value: email,
+          },
+        ],
+      });
+    }
 
-  if (user)
-    return res.status(400).json({
-      success: false,
-      message: 'Account already exist with this Badge Number',
-    });
+    const newUser = new User({ name, email, password, role });
 
-  const newUser = await User.create({
-    name,
-    badgeNumber,
-    password,
-    role: userType,
-  });
+    await newUser.save();
 
-  if (!newUser)
-    return res.status(400).json({
-      success: false,
-      message: 'Unable to add user, please try later',
-    });
+    if (!newUser)
+      return res.status(400).json({
+        success: false,
+        message: 'Unable to add user, please try later',
+      });
 
-  return res.status(200).json({ success: true, user: newUser });
+    return res.status(200).json({ success: true, user: newUser });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Unable to add user' });
+  }
 });
 
 // @route   PATCH /api/admin/user/:id
 // @desc    Update a user
 // @access  Private
 router.patch('/user/:id', async (req, res) => {
-  const { badgeNumber, name, password } = req.body;
+  const { email, name, password } = req.body;
 
   try {
-    if (!req.user.isAdmin) throw 'Unauthorized';
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).send('User not found');
+    }
 
-    const user = await User.findOneAndUpdate(
-      { _id: req.params.id },
-      { badgeNumber, name, password },
-      { new: true },
-    );
+    if (name) user.name = name;
+    if (email) user.email = email;
+    if (password) user.password = password;
 
-    if (!user) throw 'Unable to update the user';
+    await user.save();
 
     return res.status(200).json({ success: true, user });
   } catch (error) {
+    console.log('error', error);
     return res.status(400).json({ success: false, message: error });
   }
 });
@@ -183,8 +190,6 @@ router.patch('/user/:id', async (req, res) => {
 // @access  Private
 router.delete('/user/:id', async (req, res) => {
   try {
-    if (!req.user.isAdmin) throw 'Unauthorized';
-
     const user = await User.findOneAndRemove({ _id: req.params.id });
 
     if (!user) throw 'Unable to delete the user';
