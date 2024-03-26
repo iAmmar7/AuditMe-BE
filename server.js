@@ -42,14 +42,14 @@ app.use('/api/auditor', userAuth, auditorRoutes);
 app.use('/api/admin', userAuth, userRole(['admin']), adminRoutes);
 app.use('/api/sm', userAuth, userRole(['sm', 'admin']), smRoutes);
 
-// Serve Frontend in production
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '/dist')));
+// // Serve Frontend in production
+// if (process.env.NODE_ENV === 'production') {
+//   app.use(express.static(path.join(__dirname, '/dist')));
 
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '/dist/', 'index.html'));
-  });
-}
+//   app.get('*', (req, res) => {
+//     res.sendFile(path.join(__dirname, '/dist/', 'index.html'));
+//   });
+// }
 
 const port = process.env.PORT || 5000;
 
