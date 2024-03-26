@@ -11,18 +11,18 @@ dotenv.config();
 
 // Start cron jobs
 if (process.env.RUN_CRON_JOBS === 'true') {
-  require('./utils/cronJobs');
+  require('../utils/cronJobs');
 }
 
 // Load Routes
-const authRoutes = require('./routes/auth');
-const userRoutes = require('./routes/user');
-const adminRoutes = require('./routes/admin');
-const auditorRoutes = require('./routes/auditor');
-const smRoutes = require('./routes/sm');
+const authRoutes = require('../routes/auth');
+const userRoutes = require('../routes/user');
+const adminRoutes = require('../routes/admin');
+const auditorRoutes = require('../routes/auditor');
+const smRoutes = require('../routes/sm');
 
 // Load Middlewares
-const { userAuth, userRole } = require('./middlewares');
+const { userAuth, userRole } = require('../middlewares');
 
 // Middlewares
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -33,7 +33,7 @@ app.use(cors());
 app.use(express.static(path.join(__dirname, '/public')));
 
 // Connect to MongoDB
-require('./db/mongoose');
+require('../db/mongoose');
 
 // Health check route
 app.get('/', (req, res) => res.send('Express working!!'));

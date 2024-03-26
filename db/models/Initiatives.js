@@ -47,4 +47,6 @@ const InitiativesSchema = new mongoose.Schema(
   },
 );
 
-module.exports = Initiatives = mongoose.model('initiatives', InitiativesSchema);
+const Initiatives = mongoose.model('initiatives', InitiativesSchema);
+
+module.exports = Initiatives;

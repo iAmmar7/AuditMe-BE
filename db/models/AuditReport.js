@@ -96,4 +96,6 @@ const AuditReportSchema = new mongoose.Schema(
   },
 );
 
-module.exports = AuditReport = mongoose.model('auditReport', AuditReportSchema);
+const AuditReport = mongoose.model('auditReport', AuditReportSchema);
+
+module.exports = AuditReport;

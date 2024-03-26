@@ -1,8 +1,6 @@
 const fs = require('fs');
 const express = require('express');
 const moment = require('moment');
-const bcrypt = require('bcryptjs');
-const formidable = require('formidable');
 const router = express.Router();
 
 // Load Models
