@@ -24,16 +24,38 @@ const smRoutes = require('../routes/sm');
 // Load Middlewares
 const { userAuth, userRole } = require('../middlewares');
 
+const logger = require('../utils/logger');
+
+// Connect to MongoDB
+require('../db/mongoose');
+
 // Middlewares
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 app.use(cors());
 
+// Logger
+app.use((req, res, next) => {
+  const parts = [`Received ${req.method} request on ${req.url}`];
+
+  if (Object.keys(req.body).length) {
+    parts.push(`Body: ${JSON.stringify(req.body)}`);
+  }
+
+  if (Object.keys(req.query).length) {
+    parts.push(`Query: ${JSON.stringify(req.query)}`);
+  }
+
+  if (Object.keys(req.params).length) {
+    parts.push(`Params: ${JSON.stringify(req.params)}`);
+  }
+
+  logger.info(parts.join(' | '));
+  next();
+});
+
 // Serve images
 app.use(express.static(path.join(__dirname, '/public')));
-
-// Connect to MongoDB
-require('../db/mongoose');
 
 // Health check route
 app.get('/', (req, res) => res.send('Express working!!'));
@@ -44,15 +66,6 @@ app.use('/api/user', userAuth, userRoutes);
 app.use('/api/auditor', userAuth, auditorRoutes);
 app.use('/api/admin', userAuth, userRole(['admin']), adminRoutes);
 app.use('/api/sm', userAuth, userRole(['sm', 'admin']), smRoutes);
-
-// // Serve Frontend in production
-// if (process.env.NODE_ENV === 'production') {
-//   app.use(express.static(path.join(__dirname, '/dist')));
-
-//   app.get('*', (req, res) => {
-//     res.sendFile(path.join(__dirname, '/dist/', 'index.html'));
-//   });
-// }
 
 const port = process.env.PORT || 5000;
 
