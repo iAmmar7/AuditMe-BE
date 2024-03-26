@@ -1,11 +1,12 @@
 const express = require('express');
+const fs = require('fs');
 const router = express.Router();
 
 // Load Models
 const AuditReport = require('../db/models/AuditReport');
 
 // @route   DELETE /api/admin/audit-report
-// @desc    Delete raised audit report
+// @desc    Delete audit report
 // @access  Private
 router.delete('/audit-report/:id', async (req, res) => {
   try {
@@ -70,6 +71,7 @@ router.delete('/initiative/:id', async (req, res) => {
       .status(200)
       .json({ success: true, message: 'Deleted successfully' });
   } catch (error) {
+    console.log('error', error);
     return res.status(400).json({ success: false, message: error });
   }
 });

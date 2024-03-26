@@ -856,22 +856,11 @@ router.post('/csv/audit-reports', async (req, res) => {
 });
 
 // @route   GET /api/user/csv/priorities-reports
-// @desc    Get all priorities reports
+// @desc    Get all initiatives reports
 // @access  Private
 router.post('/csv/initiatives-reports', async (req, res) => {
   const {
-    filters: {
-      id,
-      date,
-      user,
-      status,
-      type,
-      region,
-      processSpecialist,
-      areaManager,
-      regionalManager,
-      stationNumber,
-    },
+    filters: { id, date, auditor, type, region, station },
   } = req.body;
 
   const matchQuery = [];
@@ -883,26 +872,14 @@ router.post('/csv/initiatives-reports', async (req, res) => {
         $lte: moment(new Date(date[1])).utcOffset(0).endOf('day').toDate(),
       },
     });
-  if (user) matchQuery.push({ 'user.name': { $regex: user, $options: 'i' } });
-  if (status) matchQuery.push({ status: { $regex: status, $options: 'i' } });
+  if (auditor)
+    matchQuery.push({ 'auditor.name': { $regex: auditor, $options: 'i' } });
   if (type) matchQuery.push({ type: { $regex: type, $options: 'i' } });
   if (region) matchQuery.push({ region: { $regex: region, $options: 'i' } });
-  if (processSpecialist)
+  if (station)
     matchQuery.push({
-      processSpecialist: { $regex: processSpecialist, $options: 'i' },
+      station: { $regex: station, $options: 'i' },
     });
-  if (regionalManager)
-    matchQuery.push({
-      regionalManager: { $regex: regionalManager, $options: 'i' },
-    });
-  if (areaManager)
-    matchQuery.push({ areaManager: { $regex: areaManager, $options: 'i' } });
-  if (stationNumber)
-    matchQuery.push({
-      stationNumber: { $regex: stationNumber, $options: 'i' },
-    });
-
-  console.log('CSV', matchQuery);
 
   try {
     // Get reports
@@ -910,12 +887,12 @@ router.post('/csv/initiatives-reports', async (req, res) => {
       {
         $lookup: {
           from: User.collection.name,
-          localField: 'user',
+          localField: 'auditor',
           foreignField: '_id',
-          as: 'user',
+          as: 'auditor',
         },
       },
-      { $unwind: '$user' },
+      { $unwind: '$auditor' },
       {
         $match:
           matchQuery.length > 0
@@ -930,14 +907,12 @@ router.post('/csv/initiatives-reports', async (req, res) => {
           _id: 0,
           id: '$id',
           date: '$date',
-          week: '$week',
-          userName: '$user.name',
+          auditorName: '$auditor.name',
+          auditorId: '$auditor._id',
           type: '$type',
           region: '$region',
-          regionalManager: '$regionalManager',
-          areaManager: '$areaManager',
           details: '$details',
-          stationNumber: '$stationNumber',
+          station: '$station',
         },
       },
     ]);
@@ -952,16 +927,13 @@ router.post('/csv/initiatives-reports', async (req, res) => {
       modifiedReport.push({
         id: reports[i].id,
         date: moment(reports[i].date).format('DD-MMM-YY'),
-        week: reports[i].week,
-        processSpecialist: reports[i].userName,
+        auditor: reports[i].auditorName,
+        auditorId: reports[i].auditorId,
         type: reports[i].type,
         region: reports[i].region,
-        regionalManager: reports[i].regionalManager,
-        areaManager: reports[i].areaManager,
         details:
           reports[i].details && reports[i].details.trim().replace(/["]+/g, ''),
-        dateIdentified: moment(reports[i].dateIdentified).format('DD-MMM-YY'),
-        stationNumber: reports[i].stationNumber,
+        station: reports[i].station,
       });
     }
 

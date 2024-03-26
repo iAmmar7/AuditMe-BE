@@ -2,16 +2,16 @@ const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 
-const generateToken = (data) => {
-  return jwt.sign(data, process.env.PASSPORT_SECRET, { expiresIn: '7d' });
-};
-
 // Load Models
 const User = require('../db/models/User');
 const {
   validateSignupRequest,
   validateLoginRequest,
 } = require('../middlewares');
+
+const generateToken = (data) => {
+  return jwt.sign(data, process.env.PASSPORT_SECRET, { expiresIn: '7d' });
+};
 
 // @route   GET /api/auth/Test
 // @desc    Test route
