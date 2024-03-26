@@ -1,5 +1,5 @@
-# AuditRail Server
-> This repo only contains the server code. To read the client's code, please see [here](https://dev.azure.com/GSD23/AuditRail/_git/audit-rail-server).
+# AuditRail
+This Application has been made for personal project purpose. Aimed at enhancing operational efficiency and accountability, this application serves as a central hub for auditors, area managers, and administrators to identify, report, and manage faults and issues within the DB application, Deployed on  Vercel.
 
 ## Features
 - Five types of users; auditor, regional managers, area managers, moderators and an admin.
@@ -23,4 +23,16 @@
 - Node <img align="center" alt="Nodejs" src="https://img.shields.io/badge/-Nodejs-43853d?style=flat-square&logo=Node.js&logoColor=white" />
 - Express <img align="center" alt="Express" src="https://img.shields.io/badge/-Express-000000?style=flat-square&logo=express&logoColor=white" />
 - MongoDB <img align="center" alt="MongoDB" src="https://img.shields.io/badge/-MongoDB-13aa52?style=flat-square&logo=mongodb&logoColor=white" />
-- Digital Ocean <img align="center" alt="DigitalOcean" src="https://img.shields.io/badge/-DigitalOcean-0068FD?style=flat-square&logo=digitalocean&logoColor=white" />
+
+Backend:
+General Features:
+- User Roles and Permissions: The application supports multiple user roles, including auditors, regional managers, and an administrator, each with tailored access rights and functionalities.
+- User Interface: Customized interfaces for different user roles, enhancing usability and efficiency.
+- Graphical UI for Company Stats: Offers visual representation of company-wide audit data, enabling quick insights and decision-making.
+- Issue Reporting and Management: Auditors can initiate or fill out detailed issue reports, which managers can review and address accordingly.
+- Feedback Mechanism: Enables managers to provide feedback on audits, fostering a continuous improvement environment.
+- Evidence Upload: Users can upload multiple images as evidence for reported issues, with server-side optimization for efficient storage and retrieval.
+- Data Filtering and Reporting: Features a comprehensive tabular view for tracking and filtering reports, initiatives, and feedback. Also includes the ability to download reports in CSV format for offline analysis.
+- Cron Job for Report Status Updates: Automated tasks to regularly update the status of reports, ensuring timely management and closure of issues.
+- Reminder System: Notifies station managers about pending tasks, helping maintain accountability and prompt response to issues.
+- Admin Panel: Allows the admin to manage user accounts and monitor recent user activities, ensuring operational integrity and compliance.
