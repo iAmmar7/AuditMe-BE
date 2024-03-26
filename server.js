@@ -10,7 +10,7 @@ const app = express();
 dotenv.config();
 
 // Start cron jobs
-if (process.env.NODE_ENV === 'production') {
+if (process.env.RUN_CRON_JOBS === 'true') {
   require('./utils/cronJobs');
 }
 
