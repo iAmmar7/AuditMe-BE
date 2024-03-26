@@ -1,8 +1,0 @@
-No tests found, exiting with code 1
-Run with `--passWithNoTests` to exit with code 0
-In D:\firmfigure-server
-  28 files checked.
-  testMatch: **/__tests__/**/*.[jt]s?(x), **/?(*.)+(spec|test).[tj]s?(x) - 1 match
-  testPathIgnorePatterns: \\node_modules\\ - 28 matches
-  testRegex:  - 0 matches
-Pattern: D:\firmfigure-server|jest|utils\test.js - 0 matches
