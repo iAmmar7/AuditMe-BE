@@ -3,7 +3,6 @@ const path = require('path');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const dotenv = require('dotenv');
-const passport = require('passport');
 
 const app = express();
 
@@ -11,17 +10,16 @@ const app = express();
 dotenv.config();
 
 // Start cron jobs
-if (process.env.NODE_ENV === 'production') {
+if (process.env.RUN_CRON_JOBS === 'true') {
   require('./utils/cronJobs');
 }
 
 // Load Routes
 const authRoutes = require('./routes/auth');
-const adminRoutes = require('./routes/admin');
 const userRoutes = require('./routes/user');
+const adminRoutes = require('./routes/admin');
 const auditorRoutes = require('./routes/auditor');
-const rmRoutes = require('./routes/rm');
-const amRoutes = require('./routes/am');
+const smRoutes = require('./routes/sm');
 
 // Load Middlewares
 const { userAuth, userRole } = require('./middlewares');
@@ -30,7 +28,6 @@ const { userAuth, userRole } = require('./middlewares');
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 app.use(cors());
-app.use(passport.initialize());
 
 // Serve images
 app.use(express.static(path.join(__dirname, '/public')));
@@ -38,26 +35,27 @@ app.use(express.static(path.join(__dirname, '/public')));
 // Connect to MongoDB
 require('./db/mongoose');
 
-// Passport Config
-require('./config/passport')(passport);
+// Health check route
+app.get('/', (req, res) => res.send('Express working!!'));
 
 // Use Routes
 app.use('/api/auth', authRoutes);
-app.use('/api/user', userAuth, userRole(['auditor', 'rm', 'am', 'sm', 'viewer']), userRoutes);
-app.use('/api/auditor', userAuth, userRole(['auditor', 'sm']), auditorRoutes);
-app.use('/api/rm', userAuth, userRole(['rm']), rmRoutes);
-app.use('/api/am', userAuth, userRole(['am']), amRoutes);
-// app.use('/api/admin', userAuth, userRole(['admin']), adminRoutes);
+app.use('/api/user', userAuth, userRoutes);
+app.use('/api/auditor', userAuth, auditorRoutes);
+app.use('/api/admin', userAuth, userRole(['admin']), adminRoutes);
+app.use('/api/sm', userAuth, userRole(['sm', 'admin']), smRoutes);
 
-// Serve Frontend in production
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '/dist')));
+// // Serve Frontend in production
+// if (process.env.NODE_ENV === 'production') {
+//   app.use(express.static(path.join(__dirname, '/dist')));
 
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '/dist/', 'index.html'));
-  });
-}
+//   app.get('*', (req, res) => {
+//     res.sendFile(path.join(__dirname, '/dist/', 'index.html'));
+//   });
+// }
 
 const port = process.env.PORT || 5000;
 
 app.listen(port, () => console.log(`Server running on port ${port}`));
+
+module.exports = app;

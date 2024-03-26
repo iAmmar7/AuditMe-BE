@@ -1,298 +1,101 @@
 const mongoose = require('mongoose');
-const Schema = mongoose.Schema;
+const { customAlphabet } = require('nanoid');
+const { regions, issueType, issueStatus } = require('../../utils/constants');
 
-const AuditReportSchema = new Schema(
+const nanoid = customAlphabet('1234567890abcdefghijklmnopqrstuvwxyz', 8);
+
+const AuditReportSchema = new mongoose.Schema(
   {
-    stationName: {
+    id: {
       type: String,
+      unique: true,
       required: true,
+      default: () => nanoid(),
     },
-    areaManager: {
-      type: String,
-      default: null,
-    },
-    regionalManager: {
-      type: String,
-      default: null,
+    auditor: {
+      type: mongoose.SchemaTypes.ObjectId,
+      ref: 'user',
+      required: true,
     },
     date: {
       type: Date,
       required: true,
     },
-    auditedBy: {
+    region: {
+      type: String,
+      required: true,
+      enum: regions,
+    },
+    stationManager: {
       type: mongoose.SchemaTypes.ObjectId,
       ref: 'user',
       required: true,
     },
-    receivingAndGreeting: [
-      {
-        name: {
-          type: String,
-          required: true,
-        },
-        point: {
-          type: Number,
-          required: true,
-        },
-      },
-    ],
-    requestAndRecommendations: [
-      {
-        name: {
-          type: String,
-          required: true,
-        },
-        point: {
-          type: Number,
-          required: true,
-        },
-      },
-    ],
-    workOrder: [
-      {
-        name: {
-          type: String,
-          required: true,
-        },
-        point: {
-          type: Number,
-          required: true,
-        },
-      },
-    ],
-    servicing: [
-      {
-        name: {
-          type: String,
-          required: true,
-        },
-        point: {
-          type: Number,
-          required: true,
-        },
-      },
-    ],
-    qualityCheck: [
-      {
-        name: {
-          type: String,
-          required: true,
-        },
-        point: {
-          type: Number,
-          required: true,
-        },
-      },
-    ],
-    explainationAndNextService: [
-      {
-        name: {
-          type: String,
-          required: true,
-        },
-        point: {
-          type: Number,
-          required: true,
-        },
-      },
-    ],
-    invoicingAndPayment: [
-      {
-        name: {
-          type: String,
-          required: true,
-        },
-        point: {
-          type: Number,
-          required: true,
-        },
-      },
-    ],
-    releasing: [
-      {
-        name: {
-          type: String,
-          required: true,
-        },
-        point: {
-          type: Number,
-          required: true,
-        },
-      },
-    ],
-    total: {
-      type: Number,
+    type: {
+      type: String,
+      required: true,
+      enum: issueType,
+    },
+    details: {
+      type: String,
       required: true,
     },
-    netScore: {
-      type: Number,
+    station: {
+      type: String,
       required: true,
     },
-    score: {
-      type: Number,
+    dateIdentified: {
+      type: Date,
       required: true,
     },
-    cleaningAndDisinfection: {
-      name: {
-        type: String,
-        required: true,
-      },
-      status: {
-        type: String,
-        required: true,
-      },
-      evidence: {
-        type: String,
-        required: true,
-      },
+    evidencesBefore: [{ type: String }],
+    evidencesAfter: [{ type: String }],
+    actionTaken: {
+      type: String,
+      default: null,
     },
-    handSanitizers: {
-      name: {
-        type: String,
-        required: true,
-      },
-      status: {
-        type: String,
-        required: true,
-      },
-      evidence: {
-        type: String,
-        required: true,
-      },
+    status: {
+      type: String,
+      default: 'Pending',
+      enum: issueStatus,
     },
-    temperatureCheck: {
-      name: {
-        type: String,
-        required: true,
-      },
-      status: {
-        type: String,
-        required: true,
-      },
-      evidence: {
-        type: String,
-        required: true,
-      },
+    feedback: {
+      type: String,
+      default: null,
     },
-    socialDistancing: {
-      name: {
-        type: String,
-        required: true,
-      },
-      status: {
-        type: String,
-        required: true,
-      },
-      evidence: {
-        type: String,
-        required: true,
-      },
+    dateOfClosure: {
+      type: Date,
+      default: null,
     },
-    PPEDisinfectantsAndHandSanitizersSupplies: {
-      name: {
-        type: String,
-        required: true,
-      },
-      status: {
-        type: String,
-        required: true,
-      },
-      evidence: {
-        type: String,
-        required: true,
-      },
+    maintenanceComment: {
+      type: String,
+      default: null,
     },
-    staffAwareness: {
-      name: {
-        type: String,
-        required: true,
-      },
-      status: {
-        type: String,
-        required: true,
-      },
-      evidence: {
-        type: String,
-        required: true,
-      },
+    isPrioritized: {
+      type: Boolean,
+      required: true,
     },
-    PPE: {
-      name: {
-        type: String,
-        required: true,
-      },
-      status: {
-        type: String,
-        required: true,
-      },
-      evidence: {
-        type: String,
-        required: true,
-      },
+    resolvedBy: {
+      type: mongoose.SchemaTypes.ObjectId,
+      ref: 'user',
+      default: null,
     },
-    procedureOfSuspected: {
-      name: {
-        type: String,
-        required: true,
+    updatedBy: [
+      {
+        name: String,
+        id: {
+          type: mongoose.SchemaTypes.ObjectId,
+          ref: 'user',
+        },
+        time: Date,
       },
-      status: {
-        type: String,
-        required: true,
-      },
-      evidence: {
-        type: String,
-        required: true,
-      },
-    },
-    procedureOfConfirmed: {
-      name: {
-        type: String,
-        required: true,
-      },
-      status: {
-        type: String,
-        required: true,
-      },
-      evidence: {
-        type: String,
-        required: true,
-      },
-    },
-    swipeMachinesAndEPayment: {
-      name: {
-        type: String,
-        required: true,
-      },
-      status: {
-        type: String,
-        required: true,
-      },
-      evidence: {
-        type: String,
-        required: true,
-      },
-    },
-    customer: {
-      name: {
-        type: String,
-        required: true,
-      },
-      status: {
-        type: String,
-        required: true,
-      },
-      evidence: {
-        type: String,
-        required: true,
-      },
-    },
-    implemented: {
-      type: Number,
-    },
+    ],
   },
   {
     timestamps: true,
   },
 );
 
-module.exports = AuditReport = mongoose.model('auditReport', AuditReportSchema);
+const AuditReport = mongoose.model('auditReport', AuditReportSchema);
+
+module.exports = AuditReport;

@@ -2,15 +2,16 @@ const fs = require('fs');
 const path = require('path');
 const express = require('express');
 const moment = require('moment');
-const formidable = require('formidable');
 const router = express.Router();
 
 // Load Models
 const PrioritiesReport = require('../db/models/PrioritiesReport');
 const Initiatives = require('../db/models/Initiatives');
+const AuditReport = require('../db/models/AuditReport');
 
 // Load utils
 const compressImage = require('../utils/compressImage');
+const { getFormidable } = require('../utils/getFormidable');
 
 // @route   GET /api/auditor/test
 // @desc    Test auditor rooutes
@@ -19,21 +20,11 @@ router.get('/test', (req, res) => {
   res.json({ message: 'Auditor route works' });
 });
 
-// @route   POST /api/auditor/raise issue
-// @desc    Submit priorities/issue report
+// @route   POST /api/auditor/report
+// @desc    Submit audit report
 // @access  Private
-router.post('/raise-issue', async (req, res) => {
-  // Ensure the directory exists
-  const uploadDir = path.join('public', 'issues');
-  if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-  }
-
-  const formData = formidable({
-    uploadDir: './public/issues',
-    keepExtensions: true,
-    multiples: true,
-  });
+router.post('/report', async (req, res) => {
+  const formData = getFormidable('issues');
 
   formData.parse(req, async (error, fields, files) => {
     const { evidences } = files;
@@ -62,22 +53,10 @@ router.post('/raise-issue', async (req, res) => {
         compressImage(`./public/${element}`);
       });
 
-      // Get the most recent report for the ID
-      const recentReport = await PrioritiesReport.find({})
-        .select('id')
-        .lean()
-        .sort({ createdAt: -1 })
-        .limit(1);
-
       // Save the report
-      const report = await PrioritiesReport.create({
+      const report = await AuditReport.create({
         ...fields,
-        user: req.user.id,
-        id: recentReport && recentReport[0] && recentReport[0].id + 1,
-        week:
-          moment(fields.date).week() -
-          moment(fields.date).add(0, 'month').startOf('month').week() +
-          1,
+        auditor: req.user.id,
         isPrioritized: fields.priority === 'Priority',
         evidencesBefore: arrayOfEvidences,
       });
@@ -96,173 +75,22 @@ router.post('/raise-issue', async (req, res) => {
   });
 });
 
-// @route   POST /api/user/priority-report/:id
-// @desc    Update priority/issue report
+// @route   PATCH /api/auditor/report/:id
+// @desc    Update audit report
 // @access  Private
-router.post('/priority-report/:id', async (req, res) => {
-  // Ensure the directory exists
-  const uploadDir = path.join('public', 'issues');
-  if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-  }
-
-  const formData = formidable({
-    uploadDir: './public/issues',
-    keepExtensions: true,
-    multiples: true,
-  });
-
-  console.log(req.params.id);
+router.patch('/report/:id', async (req, res) => {
+  const formData = getFormidable('issues');
 
   if (!req.params.id) return;
 
-  const report = await PrioritiesReport.findOne({ _id: req.params.id });
+  const report = await AuditReport.findOne({ _id: req.params.id });
 
   if (!report)
     return res
       .status(400)
       .json({ success: false, message: 'Unable to update report' });
 
-  formData.parse(req, async (error, fields, files) => {
-    const { evidencesBefore, evidencesAfter } = files;
-    try {
-      if (error) throw 'Unable to upload image!';
-
-      let arrayOfEvidencesBeforeFiles = [],
-        arrayOfEvidencesAfterFiles = [];
-
-      if (evidencesBefore) {
-        Object.keys(evidencesBefore).forEach((value) => {
-          if (evidencesBefore[value] && evidencesBefore[value].path) {
-            const path = evidencesBefore[value].path.split('public')[1];
-            arrayOfEvidencesBeforeFiles.push(path);
-          }
-          if (value === 'path') {
-            const path = evidencesBefore[value].split('public')[1];
-            arrayOfEvidencesBeforeFiles.filter((item) => {
-              if (item !== path) arrayOfEvidencesBeforeFiles.push(path);
-            });
-          }
-        });
-      }
-
-      if (evidencesAfter) {
-        Object.keys(evidencesAfter).forEach((value) => {
-          if (evidencesAfter[value] && evidencesAfter[value].path) {
-            const path = evidencesAfter[value].path.split('public')[1];
-            arrayOfEvidencesAfterFiles.push(path);
-          }
-          if (value === 'path') {
-            const path = evidencesAfter[value].split('public')[1];
-            arrayOfEvidencesAfterFiles.filter((item) => {
-              if (item !== path) arrayOfEvidencesAfterFiles.push(path);
-            });
-          }
-        });
-      }
-
-      console.log(arrayOfEvidencesBeforeFiles);
-      console.log(arrayOfEvidencesAfterFiles);
-
-      let updatedEvidencesBefore = [
-        ...report.evidencesBefore,
-        ...arrayOfEvidencesBeforeFiles,
-      ];
-      let updatedEvidencesAfter = [
-        ...report.evidencesAfter,
-        ...arrayOfEvidencesAfterFiles,
-      ];
-
-      // Update db
-      const updateReport = await PrioritiesReport.findOneAndUpdate(
-        { _id: req.params.id },
-        {
-          ...fields,
-          evidencesBefore: updatedEvidencesBefore,
-          evidencesAfter: updatedEvidencesAfter,
-          $push: {
-            updatedBy: {
-              name: req.user.name,
-              id: req.user.id,
-              time: new Date(),
-            },
-          },
-        },
-        { new: true },
-      );
-
-      if (!updateReport) throw 'Unable to update the report';
-
-      return res.status(200).json({ success: true, report: updateReport });
-    } catch (error) {
-      if (evidencesBefore) fs.unlinkSync(evidencesBefore.path);
-      if (evidencesAfter) fs.unlinkSync(evidencesAfter.path);
-      if (error && error.name === 'ValidationError') {
-        return res
-          .status(400)
-          .json({ success: false, message: 'Input fields validation error' });
-      }
-
-      return res.status(400).json({ success: false, message: error });
-    }
-  });
-});
-
-// @route   GET /api/auditor/cancel-issue/:id
-// @desc    Cancel issue report
-// @access  Private
-router.get('/cancel-issue/:id', async (req, res) => {
-  try {
-    const report = await PrioritiesReport.findOne({ _id: req.params.id });
-
-    if (!report) throw 'Report not found';
-
-    const updateReport = await PrioritiesReport.findOneAndUpdate(
-      {
-        _id: req.params.id,
-      },
-      { status: report.status === 'Cancelled' ? 'Pending' : 'Cancelled' },
-      { new: true },
-    );
-
-    if (!updateReport) throw 'Failed to cancel the issue';
-
-    return res
-      .status(200)
-      .json({ success: true, message: 'Successfully cancelled the issue' });
-  } catch (error) {
-    return res
-      .status(400)
-      .json({ success: false, message: 'Unable to update the issue' });
-  }
-});
-
-// @route   POST /api/auditor/update-issue/:id
-// @desc    Update issue report
-// @access  Private
-router.post('/update-issue/:id', async (req, res) => {
-  // Ensure the directory exists
-  const uploadDir = path.join('public', 'issues');
-  if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-  }
-
-  const formData = formidable({
-    uploadDir: './public/issues',
-    keepExtensions: true,
-    multiples: true,
-  });
-
-  if (!req.params.id) return;
-
-  const report = await PrioritiesReport.findOne({ _id: req.params.id });
-
-  if (!report)
-    return res
-      .status(400)
-      .json({ success: false, message: 'Unable to update report' });
-
-  if (report.user.toString() !== req.user.id.toString())
+  if (report.auditor.toString() !== req.user._id.toString())
     return res.status(400).json({
       success: false,
       message: 'You are not authorized to update this issue',
@@ -301,7 +129,7 @@ router.post('/update-issue/:id', async (req, res) => {
       ];
 
       // Update db
-      const updateReport = await PrioritiesReport.findOneAndUpdate(
+      const updateReport = await AuditReport.findOneAndUpdate(
         { _id: req.params.id },
         {
           ...fields,
@@ -309,6 +137,7 @@ router.post('/update-issue/:id', async (req, res) => {
           evidencesBefore: updatedEvidencesBefore,
           $push: {
             updatedBy: {
+              _id: req.user._id,
               name: req.user.name,
               id: req.user.id,
               time: new Date(),
@@ -322,6 +151,7 @@ router.post('/update-issue/:id', async (req, res) => {
 
       return res.status(200).json({ success: true, report: updateReport });
     } catch (error) {
+      console.log('error', error);
       if (evidencesBefore) fs.unlinkSync(evidencesBefore.path);
       if (error && error.name === 'ValidationError') {
         return res
@@ -338,17 +168,7 @@ router.post('/update-issue/:id', async (req, res) => {
 // @desc    Submit initiative report
 // @access  Private
 router.post('/initiative', async (req, res) => {
-  // Ensure the directory exists
-  const uploadDir = path.join('public', 'initiatives');
-  if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-  }
-
-  const formData = formidable({
-    uploadDir: './public/initiatives',
-    keepExtensions: true,
-    multiples: true,
-  });
+  const formData = getFormidable('initiatives');
 
   formData.parse(req, async (error, fields, files) => {
     const { evidencesBefore, evidencesAfter } = files;
@@ -389,8 +209,6 @@ router.post('/initiative', async (req, res) => {
         });
       }
 
-      console.log(arrayOfEvidencesBefore, arrayOfEvidencesAfter);
-
       // Check arrayOfEvidencesBefore image size and reduce if greater than 1mb
       arrayOfEvidencesBefore.forEach(async (element) => {
         compressImage(`./public/${element}`);
@@ -401,22 +219,10 @@ router.post('/initiative', async (req, res) => {
         compressImage(`./public/${element}`);
       });
 
-      // Get the most recent initiative for the ID
-      const recentReport = await Initiatives.find({})
-        .select('id')
-        .lean()
-        .sort({ createdAt: -1 })
-        .limit(1);
-
       // Save the initiative
       const report = await Initiatives.create({
         ...fields,
-        user: req.user.id,
-        id: recentReport && recentReport[0] && recentReport[0].id + 1,
-        week:
-          moment(fields.date).isoWeek() -
-          moment(fields.date).startOf('month').isoWeek() +
-          1,
+        auditor: req.user.id,
         evidencesBefore: arrayOfEvidencesBefore,
         evidencesAfter: arrayOfEvidencesAfter,
       });
@@ -436,21 +242,11 @@ router.post('/initiative', async (req, res) => {
   });
 });
 
-// @route   POST /api/auditor/update-initiative/:id
+// @route   PATCH /api/auditor/initiative/:id
 // @desc    Update initiative report
 // @access  Private
-router.post('/update-initiative/:id', async (req, res) => {
-  // Ensure the directory exists
-  const uploadDir = path.join('public', 'initiatives');
-  if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-  }
-
-  const formData = formidable({
-    uploadDir: './public/initiatives',
-    keepExtensions: true,
-    multiples: true,
-  });
+router.patch('/initiative/:id', async (req, res) => {
+  const formData = getFormidable('initiatives');
 
   if (!req.params.id)
     return res
@@ -464,7 +260,7 @@ router.post('/update-initiative/:id', async (req, res) => {
       .status(400)
       .json({ success: false, message: 'Unable to update report' });
 
-  if (report.user.toString() !== req.user.id.toString())
+  if (report.auditor.toString() !== req.user._id.toString())
     return res.status(400).json({
       success: false,
       message: 'You are not authorized to update this initiative',
@@ -508,9 +304,6 @@ router.post('/update-initiative/:id', async (req, res) => {
         });
       }
 
-      console.log(arrayOfEvidencesBeforeFiles);
-      console.log(arrayOfEvidencesAfterFiles);
-
       let updatedEvidencesBefore = [
         ...report.evidencesBefore,
         ...arrayOfEvidencesBeforeFiles,
@@ -547,8 +340,37 @@ router.post('/update-initiative/:id', async (req, res) => {
   });
 });
 
+// @route   GET /api/auditor/cancel-issue/:id
+// @desc    Cancel issue report
+// @access  Private
+router.get('/cancel-issue/:id', async (req, res) => {
+  try {
+    const report = await PrioritiesReport.findOne({ _id: req.params.id });
+
+    if (!report) throw 'Report not found';
+
+    const updateReport = await PrioritiesReport.findOneAndUpdate(
+      {
+        _id: req.params.id,
+      },
+      { status: report.status === 'Cancelled' ? 'Pending' : 'Cancelled' },
+      { new: true },
+    );
+
+    if (!updateReport) throw 'Failed to cancel the issue';
+
+    return res
+      .status(200)
+      .json({ success: true, message: 'Successfully cancelled the issue' });
+  } catch (error) {
+    return res
+      .status(400)
+      .json({ success: false, message: 'Unable to update the issue' });
+  }
+});
+
 router.get('/script', async (req, res) => {
-  const report = await PrioritesReport.updateMany(
+  const report = await PrioritiesReport.updateMany(
     { type: 'Bay Violation' },
     { $set: { type: 'Violation' } },
   );

@@ -1,6 +1,5 @@
 const JWTStrategy = require('passport-jwt').Strategy;
 const ExtractJwt = require('passport-jwt').ExtractJwt;
-const mongoose = require('mongoose');
 
 const Admin = require('../db/models/Admin');
 const User = require('../db/models/User');

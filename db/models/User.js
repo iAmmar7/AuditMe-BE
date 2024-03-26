@@ -1,7 +1,8 @@
 const mongoose = require('mongoose');
-const Schema = mongoose.Schema;
+const bcrypt = require('bcryptjs');
+const { userRoles } = require('../../utils/constants');
 
-const UserSchema = new Schema(
+const UserSchema = new mongoose.Schema(
   {
     name: {
       type: String,
@@ -18,11 +19,7 @@ const UserSchema = new Schema(
     role: {
       type: String,
       required: true,
-      enum: ['auditor', 'rm', 'viewer', 'am', 'sm', 'admin'],
-    },
-    isAdmin: {
-      type: Boolean,
-      default: false,
+      enum: userRoles,
     },
     profile_picture: {
       type: String,
@@ -38,4 +35,20 @@ const UserSchema = new Schema(
   },
 );
 
-module.exports = User = mongoose.model('user', UserSchema);
+// Pre-save hook to hash password before saving a new user
+UserSchema.pre('save', async function (next) {
+  if (this.isModified('password') || this.isNew) {
+    const hash = await bcrypt.hash(this.password, 10);
+    this.password = hash;
+  }
+  next();
+});
+
+// Method to check the password on login
+UserSchema.methods.comparePassword = function (password) {
+  return bcrypt.compare(password, this.password);
+};
+
+const User = mongoose.model('user', UserSchema);
+
+module.exports = User;
