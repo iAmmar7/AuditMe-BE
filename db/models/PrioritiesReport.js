@@ -124,4 +124,9 @@ const PrioritesReportSchema = new Schema(
   },
 );
 
-module.exports = PrioritesReport = mongoose.model('prioritiesReport', PrioritesReportSchema);
+const PrioritesReport = mongoose.model(
+  'prioritiesReport',
+  PrioritesReportSchema,
+);
+
+module.exports = PrioritesReport;

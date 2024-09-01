@@ -1,37 +1,25 @@
 const fs = require('fs');
 const express = require('express');
-const moment = require('moment');
-const formidable = require('formidable');
 const router = express.Router();
 
-// Load Models
-const PrioritiesReport = require('../db/models/PrioritiesReport');
-
-// Load utils
 const compressImage = require('../utils/compressImage');
+const AuditReport = require('../db/models/AuditReport');
+const { getFormidable } = require('../utils/getFormidable');
 
-// @route   GET /api/rm/test
-// @desc    Test RM rooutes
-// @access  Private
-router.get('/test', (req, res) => {
-  res.json({ message: 'Auditor route works' });
-});
-
-// @route   POST /api/rm/update-issue/:id
+// @route   PATCH /api/sm/report/:id
 // @desc    Update issue report
 // @access  Private
-router.post('/update-issue/:id', async (req, res) => {
-  const formData = formidable({
-    uploadDir: './public/issues',
-    keepExtensions: true,
-    multiples: true,
-  });
+router.patch('/report/:id', async (req, res) => {
+  const formData = getFormidable('issues');
 
   if (!req.params.id) return;
 
-  const report = await PrioritiesReport.findOne({ _id: req.params.id });
+  const report = await AuditReport.findOne({ _id: req.params.id });
 
-  if (!report) return res.status(400).json({ success: false, message: 'Unable to update report' });
+  if (!report)
+    return res
+      .status(400)
+      .json({ success: false, message: 'Unable to update report' });
 
   formData.parse(req, async (error, fields, files) => {
     const { evidencesAfter } = files;
@@ -55,17 +43,18 @@ router.post('/update-issue/:id', async (req, res) => {
         });
       }
 
-      console.log(arrayOfEvidencesAfterFiles);
-
       // Check image size and reduce if greater than 1mb
       arrayOfEvidencesAfterFiles.forEach(async (element) => {
         compressImage(`./public/${element}`);
       });
 
-      let updatedEvidencesAfter = [...report.evidencesAfter, ...arrayOfEvidencesAfterFiles];
+      let updatedEvidencesAfter = [
+        ...report.evidencesAfter,
+        ...arrayOfEvidencesAfterFiles,
+      ];
 
       // Update db
-      const updateReport = await PrioritiesReport.findOneAndUpdate(
+      const updateReport = await AuditReport.findOneAndUpdate(
         { _id: req.params.id },
         {
           ...fields,
@@ -88,7 +77,9 @@ router.post('/update-issue/:id', async (req, res) => {
     } catch (error) {
       if (evidencesAfter) fs.unlinkSync(evidencesAfter.path);
       if (error && error.name === 'ValidationError') {
-        return res.status(400).json({ success: false, message: 'Input fields validation error' });
+        return res
+          .status(400)
+          .json({ success: false, message: 'Input fields validation error' });
       }
 
       return res.status(400).json({ success: false, message: error });

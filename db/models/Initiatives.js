@@ -1,70 +1,41 @@
 const mongoose = require('mongoose');
-const Schema = mongoose.Schema;
+const { customAlphabet } = require('nanoid');
+const { regions, issueType } = require('../../utils/constants');
 
-const InitiativesSchema = new Schema(
+const nanoid = customAlphabet('1234567890abcdefghijklmnopqrstuvwxyz', 8);
+
+const InitiativesSchema = new mongoose.Schema(
   {
     id: {
-      type: Number,
-      required: true,
+      type: String,
       unique: true,
+      required: true,
+      default: () => nanoid(),
     },
-    user: {
+    auditor: {
       type: mongoose.SchemaTypes.ObjectId,
-      ref: 'user',
+      ref: 'auditor',
       required: true,
     },
     date: {
       type: Date,
       required: true,
     },
-    week: {
-      type: Number,
-      required: true,
-    },
     region: {
       type: String,
       required: true,
-      enum: [
-        'WR-North',
-        'WR-South',
-        'CR-East',
-        'CR-South',
-        'CR-North',
-        'Southern',
-        'ER-North',
-        'ER-South',
-      ],
-    },
-    areaManager: {
-      type: String,
-      required: true,
-    },
-    regionalManager: {
-      type: String,
-      required: true,
+      enum: regions,
     },
     type: {
       type: String,
       required: true,
-      enum: [
-        'Customer Experience',
-        'Housekeeping',
-        'Customer Mistreatment',
-        'Initiative',
-        'Admin Issues',
-        'Maintenance Issues',
-        'IT Issues',
-        'Inventory Issues',
-        'Violation',
-        'Safety',
-        'Others',
-      ],
+      enum: issueType,
     },
     details: {
       type: String,
       required: true,
     },
-    stationNumber: {
+    station: {
       type: String,
       required: true,
     },
@@ -76,4 +47,6 @@ const InitiativesSchema = new Schema(
   },
 );
 
-module.exports = Initiatives = mongoose.model('initiatives', InitiativesSchema);
+const Initiatives = mongoose.model('initiatives', InitiativesSchema);
+
+module.exports = Initiatives;
